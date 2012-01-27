@@ -1,7 +1,12 @@
-; $Id$
 name = "VoIP Tropo"
 description = "Allows the VoIP Drupal framework to work with the Tropo service."
 package = VoIP Drupal
+core = 7.x
+
 dependencies[] = voip
 dependencies[] = voipcall
-core = 6.x
+
+files[] = includes/voiptroposcript.inc
+files[] = includes/voiptroposerver.inc
+files[] = tropo_webapi/tropo-rest.class.php
+files[] = tropo_webapi/tropo.class.php
