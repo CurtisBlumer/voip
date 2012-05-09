@@ -58,8 +58,10 @@ function voipscriptui_node_validate($node, $form) {
     //check for duplicate script names before saving a new script
     if ($node->nid) {
       $where = "AND nid!=".$node->nid;
+      //TODO: Convert to D7 query
       $old_script_name = db_result(db_query("SELECT title FROM {node} WHERE type='voipscriptui' AND nid=%d", $node->nid));
     }
+    //TODO: Convert to D7 query
     $exist = db_result(db_query("SELECT nid FROM {node} WHERE type='voipscriptui' AND title='%s' $where LIMIT 1", $node->title));
     if ($exist) {
       form_set_error('field_voipscriptui_code',
@@ -93,11 +95,6 @@ function voipscriptui_node_validate($node, $form) {
     }
   }
 }
-
-/**
- * Implements hook_nodeapi().
- */
-function voipscriptui_nodeapi_OLD($node, $op, $a3, $a4 ) { }
 
 /**
  * Implements hook_menu().
@@ -135,6 +132,7 @@ function voipscriptui_form_alter(&$form, &$form_state, $form_id) {
     if (isset($_GET['clone_voipscript'])) {
       if (isset($_GET['type']) && $_GET['type'] == 'node') {
         $nid = $_GET['clone_voipscript'];
+        //TODO: Convert to D7 query
         $code = db_query("SELECT field_voipscriptui_code_value FROM {content_type_voipscriptui} WHERE nid = :nid", array(':nid' => $nid))->fetchField();
       }
       else {
@@ -208,6 +206,7 @@ function voipscriptui_scripts_page() {
     );
   }
 
+  //TODO: Convert to D7 query
   // get voipscriptui scripts
   $res = db_query("SELECT nid, title FROM {node} WHERE type = :type", array(':type' => 'voipscriptui'));
   foreach ($res as $script_ui) {
