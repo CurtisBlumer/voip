@@ -59,9 +59,17 @@ abstract class VoipServer {
     return $this->name;
   }
 
-  abstract function getDefaultLanguage();
-
-  abstract function getDefaultVoice();
+  function getDefaultVoice(){
+    $voice_id = variable_get('voipserver_'.$this->id.'_voice_id', '');
+    if (!$voice_id) {
+      // set $voice_id with the first voice in the list of voices provided by this server
+      $voices = array_values(VoipVoice::getVoices(NULL, NULL, NULL, $this->id));
+      $voice_id = $voices[0]->getVoiceId();
+      $this->setDefaultVoice($voice_id);
+    }
+    $voipvoice_voice = VoipVoice::getVoice($voice_id);
+    return $voipvoice_voice;
+  }
 
   function getConfigForm() {
     return $this->config_form;

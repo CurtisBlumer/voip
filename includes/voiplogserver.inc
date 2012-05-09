@@ -27,22 +27,6 @@ class VoipLogServer extends VoipServer {
 
 
   /*
-   * Public methods
-   *
-   * NOTE: the following methods are not to be called. They are only implemented
-   *       because VoipServer is an abstract class.
-   */
-
-  function getDefaultLanguage() {
-    return 'en';
-  }
-
-  function getDefaultVoice() {
-    return 'man';
-  }
-
-
-  /*
    * API methods
    */
 
