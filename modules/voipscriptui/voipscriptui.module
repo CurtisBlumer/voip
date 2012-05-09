@@ -10,12 +10,12 @@ function voipscriptui_voipscript_get_script_names() {
   $script_names = array();
 
   //Create the Sql query. This uses various parts of Drupal 7's new DBTNG database abstraction layer.
-  //$query = db_select('node', n.title FROM {node} n WHERE n.type = :n.type and n.status = :n.status', array(':n.type' => "voipscriptui", ':n.status' => 1));
-  $query = db_select('node', 'n')
-    ->join('title', 'n', ':n.type = voipscriptui :n.status = 1', array(':n.type' => "voipscriptui", ':n.status' => 1));
-  $result = $query->execute();
+  $result = db_select('node', 'n')
+  ->fields('n',array('title'))
+  ->condition('type','voipscriptui')
+  ->condition('status',1)
+  ->execute();
 
-  // @todo Drupal 7 update BWM THIS ISN'T WORKING YET. NEED TO MERGE $query into $result
   foreach ($result as $node) {
     $script_names[] = $node->title;
   }
@@ -54,29 +54,43 @@ function voipscriptui_voipscript_load_script($script_name, $options = NULL) {
  * Implements hook_node_validate().
  */
 function voipscriptui_node_validate($node, $form) {
-  if ($node->type == 'voipscriptui'    && TRUE) {
+  if ($node->type == 'voipscriptui') {
     //check for duplicate script names before saving a new script
     if ($node->nid) {
-      $where = "AND nid!=" . $node->nid;
+      $where = "AND nid!=".$node->nid;
+      $old_script_name = db_result(db_query("SELECT title FROM {node} WHERE type='voipscriptui' AND nid=%d", $node->nid));
     }
-    // @todo Drupal 7 Upgrade Please convert this statement to the D7 database API syntax.
-    $exist = db_query("SELECT nid FROM {node} WHERE type='voipscriptui' AND title='%s' $where LIMIT 1", $node->title)->fetchField();
+    $exist = db_result(db_query("SELECT nid FROM {node} WHERE type='voipscriptui' AND title='%s' $where LIMIT 1", $node->title));
     if ($exist) {
       form_set_error('field_voipscriptui_code',
-        t('A script called @script_name already exists. To edit it, click <a target="_blank" href="' . base_path() . 'node/' . $exist . '/edit">here</a>',
+        t('A script called @script_name already exists. To edit it, click <a target="_blank" href="'.base_path().'node/'.$exist.'/edit">here</a>',
           array('@script_name' => $node->title)));
     }
-    $script_code = '$script = new VoipScript("' . $node->title . '");';
-    $script_code .= $node->field_voipscriptui_code[0]['value'];
-
-    ob_start();
-    if (eval("$script_code") === false) {
-      ob_end_clean();
-      form_set_error('field_voipscriptui_code',
-        t('PHP syntax error in script: @script',
-          array('@script' => $script_code)));
+    else if($node->title != $old_script_name) {
+      $all_scripts = VoipScript::getScriptNames();
+      if(in_array($node->title, $all_scripts)) {
+        form_set_error('field_voipscriptui_code', t('A script called @script_name already exists.', array('@script_name' => $node->title)));
+      }
     }
-    ob_end_clean();
+    
+    //Check that VoIP Script code is safe before running eval
+    $errors = voipscript_eval_validate($node->field_voipscriptui_code[0]['value']);
+    if ($errors) {
+        $illegal_calls = implode(", ", $errors);
+        form_set_error('field_voipscriptui_code', t("You don't have permission to use following PHP function: ") . $illegal_calls);
+    }
+    else {
+      //Run only if it passes voipscript_eval_validate
+      $script_code = '$script = new VoipScript("'.$node->title.'");';
+      $script_code .= $node->field_voipscriptui_code[0]['value'];
+    
+      ob_start();
+      if(eval("$script_code")===false) {
+        ob_end_clean();
+        form_set_error('field_voipscriptui_code', t('PHP syntax error in script: @script', array('@script' => $script_code)));
+      }
+      ob_end_clean();
+    }
   }
 }
 
