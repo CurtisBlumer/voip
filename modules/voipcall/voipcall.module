@@ -417,7 +417,11 @@ function voipcall_call_log() {
  * @see http://drupal.org/node/1354
  */
 function voipcall_call_page($cid) {
-  $call_data = db_fetch_array(db_query("SELECT * FROM {voipcall} WHERE cid = :cid", array(':cid' => $cid)));
+  //$call_data = db_fetch_array(db_query("SELECT * FROM {voipcall} WHERE cid = :cid", array(':cid' => $cid)));
+  $call_data = db_select('voipcall', 'vc')
+  ->fields('vc')
+  ->execute()
+  ->fetchAssoc();
   foreach ($call_data as $label => $data) {
     $output .= "<div><b>" . $label . ":</b> " . $data . "</div>";
   }
