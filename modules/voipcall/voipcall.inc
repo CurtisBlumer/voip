@@ -206,8 +206,8 @@ class VoipCall {
     // @todo Drupal 7 update Please review the conversion of this statement to the D7 database API syntax.
     /* db_query("DELETE FROM {voipcall} WHERE cid=%d", $cid) */
     $res = db_delete('voipcall')
-  ->condition('cid', $cid)
-  ->execute();
+    ->condition('cid', $cid)
+    ->execute();
     $this->call_data = NULL;
     return $res;
   }

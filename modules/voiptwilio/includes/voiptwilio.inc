@@ -1164,26 +1164,56 @@ function _voiptwilio_numbers_add_space($matches) {
 
 function _voiptwilio_transfer_file($url, $validators = array()) {
   $filename = rawurldecode(basename($url));
-  $filepath = file_create_filename($filename, file_directory_temp());
+    $filepath = file_create_filename($filename, file_directory_temp());
+    
+    // Then make the actual request to download the file.
+    $data = file_get_contents($url); 
+    
+    //Save it to temporary file.
+    if ($fp = @fopen($filepath, 'w+')) {
+        fputs($fp, $data); 
+        fclose($fp);
+    }
+    
+    $file = _voiptwilio_file_save_upload($filepath);
 
-  // Then make the actual request to download the file.
-  $data = file_get_contents($url);
+    // Delete the temporary file.
+    @unlink($filepath);
 
-  //Save it to temporary file.
-  if ($fp = @fopen($filepath, 'w+')) {
-    fputs($fp, $data);
-    fclose($fp);
+    if ($file) {
+      return $file;
+    }
+    
+    return NULL;
+}
+
+function _voiptwilio_file_save_upload($filepath) {
+  global $user;
+  $dest = file_directory_path();
+  $file = new stdClass();
+  $file->uid = $user->uid;
+  $file->filename = basename($filepath);
+  $file->filepath = $filepath;
+  $file->filemime = module_exists('mimedetect') ? mimedetect_mime($file) : file_get_mimetype($file->filename);
+
+  // Allow only mp3 and wav files
+  if (!preg_match('/\.(mp3|wav)$/i', $file->filename)) {
+    return 0;
   }
 
-  //Save it to default files directory.
-  $destination = file_directory_path();
-  $file = field_file_save_file($filepath, $validators, $destination);
-  // Delete the temporary file.
-  @unlink($filepath);
-
-  if ($file) {
-    return $file;
+  $file->source = 'voiptwilio';
+  $file->destination = file_destination(file_create_path($dest .'/'. $file->filename), FILE_EXISTS_RENAME);
+  $file->filesize = filesize($filepath);
+  if (!file_copy($file, $file->destination, FILE_EXISTS_RENAME)) {
+    watchdog('voiptwilio', 'Upload error. Could not move file %file to destination %destination.', array('%file' => $file->filename, '%destination' => $file->destination));
+    return 0;
   }
 
-  return NULL;
+  // If we made it this far it's safe to record this file in the database.
+  $file->status = FILE_STATUS_TEMPORARY;
+  $file->timestamp = time();
+  // Insert new record to the database.
+  drupal_write_record('files', $file);
+  
+  return (array)$file;
 }
