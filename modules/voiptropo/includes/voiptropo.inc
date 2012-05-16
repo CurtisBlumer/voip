@@ -1009,6 +1009,7 @@ function _voiptropo_file_save_upload($source, $validators, $dest) {
     // As the file may be named example.php.txt, we need to munge again to
     // convert to example.php_.txt, then create the correct destination.
     $file->filename = file_munge_filename($file->filename, $extensions);
+    //TODO: file_create_path() and file_check_directory() were merged into file_prepare_directory()
     $file->destination = file_destination(file_create_path($dest . '/' . $file->filename), $replace);
   }
 
@@ -1030,8 +1031,7 @@ function _voiptropo_file_save_upload($source, $validators, $dest) {
   // This overcomes open_basedir restrictions for future file operations.
   $file->filepath = $file->destination;
   if (!move_uploaded_file($_FILES['filename']['tmp_name'], $file->filepath)) {
-    form_set_error($source, t('File upload error. Could not move uploaded file.'));
-    watchdog('file', 'Upload error. Could not move uploaded file %file to destination %destination.', array('%file' => $file->filename, '%destination' => $file->filepath));
+    watchdog('voiptropo', 'Upload error. Could not move uploaded file %file to destination %destination.', array('%file' => $file->filename, '%destination' => $file->filepath));
     return 0;
   }
 
