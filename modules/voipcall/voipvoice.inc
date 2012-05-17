@@ -230,7 +230,7 @@ class VoipVoice {
    *   VoipPrompt instance combining text to be read by VoIP
    *   servers.
    */
-  function getPrompt($text, $args = NULL, $as = NULL) {
+  function getPrompt($text, $args = array(), $as = NULL) {
     $prompt_text = t($text, $args, array('langcode' => $this->getLanguage()));
     return new VoipPrompt($prompt_text, $this->getVoiceId(), $as);
   }
@@ -251,7 +251,7 @@ function voipvoice_set_current_voice($voice_id) {
 /**
  * Wrapper around VoiceVoice's getPrompt() method
  */
-function v($text, $args = NULL, $as = NULL,    $voice_id = NULL) {
+function v($text, $args = array(), $as = NULL, $voice_id = NULL) {
   if ($voice_id) {
     $voipvoice_current_voice = VoipVoice::getVoice($voice_id);
   }

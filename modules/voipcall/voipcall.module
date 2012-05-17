@@ -4,10 +4,13 @@
  * @file
  * Implementation of core functionality associated with voip calls
  */
-
+foreach (array('voipscript.inc', 'voipcall.inc', 'voipsession.inc', 'voipvoice.inc') as $file) {
+  require_once(dirname(__FILE__) . DIRECTORY_SEPARATOR . $file);
+}
 /**
  * Public functions
  */
+ 
 
 /**
  * Implements hook_menu().
@@ -491,7 +494,7 @@ function voipcall_session_log() {
       'expiration_time',
       'expiring_at'
     ));
-  $result = $query->execute();
+  $result = $query->execute()->fetchAssoc();
   
   $output = '';
   $data = array();
