@@ -2,7 +2,8 @@
 /**
  * @file Provides an easier way for developers to test Voip Drupal scripts
  */
-
+include_once 'voipscriptui.features.inc';
+include_once 'voipscriptui.features.field.inc';
 /**
  * Implements hook_voipscript_get_script_names().
  */

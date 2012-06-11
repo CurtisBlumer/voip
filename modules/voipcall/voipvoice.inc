@@ -229,7 +229,7 @@ function voipcall_get_voices_as_list($voices) {
 }
 
 /**
- * Implements hook_getvoices().
+ * Implements hook_voip_getvoices().
  */
 function voipcall_voip_getvoices($language , $gender, $is_local, $voice_provider){
   if($voice_provider) {
