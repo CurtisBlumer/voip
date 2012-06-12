@@ -38,7 +38,8 @@ function voipscriptui_voipscript_load_script($script_name, $options = NULL) {
   $script_node = node_load($param);
   if ($script_node) {
     $script = new VoipScript($script_name);
-    $script_code = $script_node->field_voipscriptui_code[0]['value'];
+    $script_code = field_get_items('node', $node, 'field_voipscriptui_code');
+    $script_code = $script_code[0]['value'];
     ob_start();
     if (eval("$script_code") === false) {
       ob_end_clean();
@@ -56,14 +57,27 @@ function voipscriptui_voipscript_load_script($script_name, $options = NULL) {
  */
 function voipscriptui_node_validate($node, $form) {
   if ($node->type == 'voipscriptui') {
+    //TODO: Test
+    //$exist = db_result(db_query("SELECT nid FROM {node} WHERE type='voipscriptui' AND title='%s' $where LIMIT 1", $node->title));
+    $query = db_select('node', 'n')
+    ->fields('n', array('nid'))
+    ->condition('type', 'voipscriptui')
+    ->condition('title', $node->title)
+    ->range(0,1);
+
     //check for duplicate script names before saving a new script
     if ($node->nid) {
-      $where = "AND nid!=".$node->nid;
-      //TODO: Convert to D7 query
-      $old_script_name = db_result(db_query("SELECT title FROM {node} WHERE type='voipscriptui' AND nid=%d", $node->nid));
+      //$where = "AND nid!=".$node->nid;
+      $query->condition('nid', $node->nid, '!=');
+      $old_script_name = db_query("SELECT title FROM {node} WHERE type='voipscriptui' AND nid=:nid", array(':nid' =>$node->nid))->fetchField();
     }
-    //TODO: Convert to D7 query
-    $exist = db_result(db_query("SELECT nid FROM {node} WHERE type='voipscriptui' AND title='%s' $where LIMIT 1", $node->title));
+    else {
+      $old_script_name = '';
+    }    
+    $exist = $query
+    ->execute()
+    ->fetchField();
+    
     if ($exist) {
       form_set_error('field_voipscriptui_code',
         t('A script called @script_name already exists. To edit it, click <a target="_blank" href="'.base_path().'node/'.$exist.'/edit">here</a>',
@@ -76,8 +90,11 @@ function voipscriptui_node_validate($node, $form) {
       }
     }
     
+    //Use field_get_items as part of the field localisation
+    $field_voipscriptui_code = field_get_items('node', $node, 'field_voipscriptui_code');
+    
     //Check that VoIP Script code is safe before running eval
-    $errors = voipscript_eval_validate($node->field_voipscriptui_code[0]['value']);
+    $errors = voipscript_eval_validate($field_voipscriptui_code[0]['value']);
     if ($errors) {
         $illegal_calls = implode(", ", $errors);
         form_set_error('field_voipscriptui_code', t("You don't have permission to use following PHP function: ") . $illegal_calls);
@@ -85,7 +102,7 @@ function voipscriptui_node_validate($node, $form) {
     else {
       //Run only if it passes voipscript_eval_validate
       $script_code = '$script = new VoipScript("'.$node->title.'");';
-      $script_code .= $node->field_voipscriptui_code[0]['value'];
+      $script_code .= $field_voipscriptui_code[0]['value'];
     
       ob_start();
       if(eval("$script_code")===false) {
@@ -133,7 +150,7 @@ function voipscriptui_form_alter(&$form, &$form_state, $form_id) {
     if (isset($_GET['clone_voipscript'])) {
       if (isset($_GET['type']) && $_GET['type'] == 'node') {
         $nid = $_GET['clone_voipscript'];
-        //TODO: Convert to D7 query
+        //TODO: change db name
         $code = db_query("SELECT field_voipscriptui_code_value FROM {content_type_voipscriptui} WHERE nid = :nid", array(':nid' => $nid))->fetchField();
       }
       else {
@@ -207,20 +224,28 @@ function voipscriptui_scripts_page() {
     );
   }
 
-  //TODO: Convert to D7 query
   // get voipscriptui scripts
-  $res = db_query("SELECT nid, title FROM {node} WHERE type = :type", array(':type' => 'voipscriptui'));
+  //$res = db_query("SELECT nid, title FROM {node} WHERE type = :type", array(':type' => 'voipscriptui'))->fetchAssoc();
+  $res = db_select('node', 'n')
+  ->extend('PagerDefault')
+  ->extend('TableSort')
+  ->fields('n', array('nid', 'title'))
+  ->orderByHeader($headers)
+  ->limit(50)
+  ->execute();
+  
   foreach ($res as $script_ui) {
+  
     $row = array(
-      'title' => $script_ui['title'],
-      'code' => l('view', 'node/' . $script_ui['nid']),
+      'title' => $script_ui->title,
+      'code' => l('view', 'node/' . $script_ui->nid),
       'type' => 'VoIP Script UI',
     );
 
     if ($clone_all || $clone_ui) {
-      $row['clone'] = l('clone', 'node/add/voipscriptui', array('query' => 'clone_voipscript=' . $script_ui['nid'] . '&type=node'));
+      $row['clone'] = l('clone', 'node/add/voipscriptui', array('query' => array('clone_voipscript' => $script_ui->nid, 'type' => 'node')));
     }
-    $data[strtolower($script_ui['title'])] = $row;
+    $data[strtolower($script_ui->title)] = $row;
   }
 
   // get non-voipscriptui scripts
