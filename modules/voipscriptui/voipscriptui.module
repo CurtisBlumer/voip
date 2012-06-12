@@ -406,11 +406,6 @@ function _voipscriptui_reverse_parser($script_name) {
         $output .= '$var_name = "' . $var_name . '"; <br>$var_value = "' . $var_value . '"; <br>';
         $output .= '$script->addSet($var_name, $var_value);<br>';
         break;
-      case 'VoipCmdSetLanguage':
-        $language = $script->evalString($cmd->getParam('language'));
-        $output .= '$language = "' . $language . '"; <br>';
-        $output .= '$script->addSetLanguage($language);<br>';
-        break;
       case 'VoipCmdSetVoice':
         $voice = $cmd->getParam('voice');
         $output .= '$voice = "' . $voice . '"; <br>';
