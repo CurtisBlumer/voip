@@ -5,5 +5,7 @@
 
 function voip_uninstall() {
   //Delete module variables
-  db_query("DELETE FROM {variable} WHERE name LIKE 'voipserver_%%'");
+  db_delete('variable')
+    ->condition('name', 'voipserver_%%', 'LIKE')
+    ->execute();
 }

@@ -41,6 +41,7 @@ function voipcall_schema() {
       'call_id' => array(
         'type' => 'text',
         'size' => 'small',
+        'not null' => FALSE,
       ),
       'caller_name' => array(
         'type' => 'varchar',
@@ -80,7 +81,7 @@ function voipcall_schema() {
       ),
       'script' => array(
         'type' => 'text',
-        'size' => 'normal',
+        'size' => 'big',
       ),
       'source' => array(
         'type' => 'varchar',
@@ -300,4 +301,13 @@ function voipcall_update_6102() {
   db_drop_field('voipcall', 'text_handler');
 
   return t('VoIP Call Update 6102 ran successfully.') /* $ret */;
+}
+
+/**
+ * Allow longer scripts to be stored.
+ */
+function voipcall_update_6103() {
+  $ret = array();
+  db_change_field($ret, 'voipcall', 'script', 'script', array('type' => 'text', 'size' => 'big'));
+  return $ret;
 }

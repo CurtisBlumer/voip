@@ -113,21 +113,6 @@ class VoipCall {
    *   The VoipCall instance, or NULL in case of an invalid cid
    */
 
-  /**
-   *
-   * @todo Drupal 7 Update
-   *
-   * replace db_fetch_object() with foreach ()
-   *
-   * $call_data = db_fetch_object(db_query("SELECT * FROM {voipcall} WHERE cid = :cid", array(':cid' => $cid)));
-   *
-   * Should be replaced by
-   *
-   * foreach ($result as $record) {
-   *
-   *
-   **/
-
   public static function load($cid) {
     $call = NULL;
     $result = db_query("SELECT * FROM {voipcall} WHERE cid = :cid", array(':cid' => $cid));
@@ -152,23 +137,11 @@ class VoipCall {
    * @return $cid or NULL depending on the result of the query
    */
 
-  /**
-   * @todo Drupal 7 update
-   *
-   * Reformat
-   * $cid = db_query("SELECT cid FROM {voipcall} WHERE call_id = :call_id", array(':call_id' => $call_id))->fetchField();
-   *
-   * to match drupal standard
-   *
-   */
-
   public static function getCidFromCallId($call_id) {
     // fetch the desired voipcall data
     $cid = db_query("SELECT cid FROM {voipcall} WHERE call_id = :call_id", array(':call_id' => $call_id))->fetchField();
     return $cid;
   }
-
-
 
   /*
    * Public methods
@@ -203,8 +176,6 @@ class VoipCall {
    */
   public function delete() {
     $cid = $this->call_data->cid;
-    // @todo Drupal 7 update Please review the conversion of this statement to the D7 database API syntax.
-    /* db_query("DELETE FROM {voipcall} WHERE cid=%d", $cid) */
     $res = db_delete('voipcall')
     ->condition('cid', $cid)
     ->execute();
@@ -275,6 +246,15 @@ class VoipCall {
 
   public function setUid($uid) {
     $this->call_data->uid = $uid;
+  }
+  
+  public function loadGlobalUser(){
+    $uid = $this->getUid();
+    if(empty($uid)){
+      $uid = 0;
+    }
+    global $user;
+    $user = user_load($uid);
   }
 
   public function getCallId() {
@@ -614,10 +594,6 @@ class VoipCall {
       $update = NULL;
       $data->created = REQUEST_TIME;
 
-      // set the data uid
-      global $user;
-      $data->uid = $user->uid;
-
       // initialize the 'Call Id' field
       if (!isset($details->call_id)) {
         $data->call_id = NULL;
@@ -698,20 +674,19 @@ class VoipCall {
     }
     else {
       // load the data
-      $result = db_query("SELECT * FROM {voipcall} WHERE cid = :cid", array(':cid' => $details->cid));
-      $data = NULL;
-      foreach($result as $info) {
-        $data = $info;
-        break;
-      }
+      $data = db_query("SELECT * FROM {voipcall} WHERE cid = :cid", array(':cid' => $details->cid))->fetchObject();
       $update = 'cid';
       $data->changed = REQUEST_TIME;
     }
 
     // update data fields
-    if (isset($details->uid)) {
+    /*if (isset($details->uid)) {
       $data->uid = $details->uid;
-    }
+    }*/
+    
+    // update call uid based on current user
+    global $user;
+    $data->uid = $user->uid;
 
     // update voipcall-specific fields
 
@@ -865,8 +840,8 @@ class VoipCall {
     $call_data = $this->call_data;
 
     // add call variables to script variables
-
-    $script->setVar('uid', $call_data->uid);
+    // Note: 'uid' should only be accessed from global $user
+    // $script->setVar('uid', $call_data->uid);
 
     $script->setVar('call_id',
       $call_data->call_id);

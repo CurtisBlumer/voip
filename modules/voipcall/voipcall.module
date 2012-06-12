@@ -75,9 +75,108 @@ function voipcall_permission() {
   return array(
     'administer voipcall setup' => array(
       'title' => t('administer voipcall setup'),
-      'description' => t('todo Add a description for \'administer voipcall setup\''),
+      'description' => t('administer voipcall setup'),
+    ),
+    'Use PHP input for VoIP Script (dangerous - grant with care)' => array(
+      'title' => t('Use PHP input for VoIP Script (dangerous - grant with care)'),
+      'description' => t('Use PHP input for VoIP Script (dangerous - grant with care)'),
     ),
   );
+}
+
+/**
+ * Implementation of hook_block_info()
+ */
+function voipcall_block_info() {
+  $blocks['voipcall_config'] = array(
+    'info' => t('VoIP Drupal Default call configuration'),
+    // DRUPAL_CACHE_PER_ROLE will be assumed.
+  ); 
+  return $blocks;  
+}
+
+/**
+ * Implementation of hook_block_view()
+ */
+function voipcall_block_view($delta = '') {
+  $block = array();
+  switch ($delta) {
+    case 'voipcall_config':
+      if (user_access('administer voipcall setup')) {
+      $block = array(
+        'subject' => t('VoIP Drupal call configuration'), 
+        'content' =>  drupal_get_form('voipcall_block_form'),
+      );
+      }
+      break;
+  }
+  return $block;
+}
+
+function voipcall_block_form() {
+
+  $form['voipcall_inbound_call_script_name'] = array(
+    '#type' => 'select',
+    '#title' => t('Inbound call script name'),
+    '#description' => t('Script used for incoming phone calls'),
+    '#options' => VoipScript::getScriptNames(),
+    '#default_value' => variable_get('voipcall_inbound_call_script_name', 'voipcall_default_inbound_call_script'),
+  );
+
+  $form['voipcall_outbound_call_script_name'] = array(
+    '#type' => 'select',
+    '#title' => t('Outbound call script name'),
+    '#description' => t('Script used for outgoing calls'),
+    '#options' => VoipScript::getScriptNames(),
+    '#default_value' => variable_get('voipcall_outbound_call_script_name', 'voipcall_default_outbound_call_script'),
+  );
+
+  $form['voipcall_inbound_text_script_name'] = array(
+    '#type' => 'select',
+    '#title' => t('Inbound text script name'),
+    '#description' => t('Script used for incoming text messages'),
+    '#options' => VoipScript::getScriptNames(),
+    '#default_value' => variable_get('voipcall_inbound_text_script_name', 'voipcall_default_inbound_text_script'),
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit', 
+    '#value' => t('Save'),
+  );
+
+  return $form;
+}
+
+/**
+ * Validates the submission of the configuration form.
+ */
+function voipcall_block_form_validate($form, &$form_state) {
+  $values = $form_state['values'];
+  //@todo: provide feedback directly on the affected fields...
+  $script_name = $values['voipcall_inbound_call_script_name'];
+  $script = VoipScript::loadScript($script_name);
+  if(!$script){
+    form_set_error('', t('Invalid inbound call script name: @script_name.', array('@script_name' => $script_name)));
+  }
+  $script_name = $values['voipcall_outbound_call_script_name'];
+  $script = VoipScript::loadScript($script_name);
+  if(!$script){
+    form_set_error('', t('Invalid outbound call script name: @script_name.', array('@script_name' => $script_name)));
+  }
+
+  $script_name = $values['voipcall_inbound_text_script_name'];
+  $script = VoipScript::loadScript($script_name);
+  if(!$script){
+    form_set_error('', t('Invalid inbound text script name: @script_name.', array('@script_name' => $script_name)));
+  }
+}
+
+function voipcall_block_form_submit($form, &$form_state) {
+  // store values
+  variable_set('voipcall_inbound_call_script_name', $form_state['values']['voipcall_inbound_call_script_name']);
+  variable_set('voipcall_outbound_call_script_name', $form_state['values']['voipcall_outbound_call_script_name']);
+  variable_set('voipcall_inbound_text_script_name', $form_state['values']['voipcall_inbound_text_script_name']);
+  drupal_set_message(t('The default call settings have been saved.'));
 }
 
 /**
@@ -379,24 +478,18 @@ function voipcall_call_log() {
     ),
     '',
   );
-  //$sql = "SELECT cid, start_time, uid, caller_name, caller_number,dest_name,dest_number FROM {voipcall}" . tablesort_sql($headers);
-  //$limit = 50;
-  //$result = pager_query($sql, $limit);
+
   $query = db_select('voipcall', 'vc')
   ->extend('PagerDefault')
   ->extend('TableSort')
   ->fields('vc', array('cid', 'start_time', 'uid', 'caller_name', 'caller_number', 'dest_name', 'dest_number'))
   ->orderByHeader($headers)
-  ->limit(50);
-  $result = $query->execute()->fetchAssoc();
+  ->limit(50)
+  ->execute();
 
   $data = array();
-  if ($result) {
-    //your basic while loop to get the data
-    foreach($result as $tmp) {
-      // @todo Convert "user_load" to "user_load_multiple" if "$tmp['uid']" is other than a uid.
-      // To return a single user object, wrap "user_load_multiple" with "array_shift" or equivalent.
-      // Example: array_shift(user_load_multiple(array(), $tmp['uid']))
+
+  while($tmp = $query->fetchAssoc()) {
       $owner = user_load($tmp['uid']);
       if (!$tmp['uid']) {
         $tmp['uid'] = t('Anonymous');
@@ -408,7 +501,6 @@ function voipcall_call_log() {
 
       $tmp['other'] = l('See more', 'voipcall/' . $tmp['cid']);
       $data[] = $tmp;
-    }
   }
   $empty = 'No calls in the log.';
   $output = theme('table', array('header' => $headers, 'rows' => $data, 'empty' => $empty));
@@ -421,11 +513,12 @@ function voipcall_call_log() {
  * @see http://drupal.org/node/1354
  */
 function voipcall_call_page($cid) {
-  //$call_data = db_fetch_array(db_query("SELECT * FROM {voipcall} WHERE cid = :cid", array(':cid' => $cid)));
   $call_data = db_select('voipcall', 'vc')
   ->fields('vc')
+  ->condition('cid' , $cid)
   ->execute()
   ->fetchAssoc();
+  $output = '';
   foreach ($call_data as $label => $data) {
     $output .= "<div><b>" . $label . ":</b> " . $data . "</div>";
   }
@@ -494,20 +587,22 @@ function voipcall_session_log() {
       'destination_number',
       'expiration_time',
       'expiring_at'
-    ));
-  $result = $query->execute()->fetchAssoc();
+    ))
+    ->execute();
+  //$result = $query->execute()->fetchAssoc();
   
   $output = '';
   $data = array();
-  if ($result) {
+  //if ($result) {
     //your basic foreach loop to get the data
-    foreach ($result as $tmp) {
+    //foreach ($result as $tmp) {
+    while($tmp = $query->fetchAssoc()) {
       $tmp['expiring_at'] = format_date($tmp['expiring_at'], 'short');
       $tmp['call_id'] = l($tmp['call_id'], 'voipcall/' . $tmp['call_id']);
       $tmp['delete'] = l('Delete', 'voipsession/delete/' . $tmp['sid']);
       $data[] = $tmp;
     }
-  }
+  //}
   $empty = 'No Sessions in the log.';
   $output = theme('table', array('header' => $headers, 'rows' => $data, 'empty' => $empty));
   $output .= theme('pager', array('tags' => NULL, 'element' => 0));
