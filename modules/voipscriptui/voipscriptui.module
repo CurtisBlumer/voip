@@ -150,8 +150,7 @@ function voipscriptui_form_alter(&$form, &$form_state, $form_id) {
     if (isset($_GET['clone_voipscript'])) {
       if (isset($_GET['type']) && $_GET['type'] == 'node') {
         $nid = $_GET['clone_voipscript'];
-        //TODO: change db name
-        $code = db_query("SELECT field_voipscriptui_code_value FROM {content_type_voipscriptui} WHERE nid = :nid", array(':nid' => $nid))->fetchField();
+        $code = db_query("SELECT field_voipscriptui_code_value FROM {field_data_field_voipscriptui_code} WHERE nid = :nid", array(':nid' => $nid))->fetchField();
       }
       else {
         $script_name = $_GET['clone_voipscript'];
