@@ -259,7 +259,7 @@ function voipscriptui_scripts_page() {
         );
 
         if ($clone_all) {
-          $row['clone'] = l('clone', 'node/add/voipscriptui', array('query' => 'clone_voipscript=' . $script_name));
+          $row['clone'] = l('clone', 'node/add/voipscriptui', array('query' => array('clone_voipscript' => $script_name)));
         }
         $data[strtolower($script_name)] = $row;
       }
