@@ -21,7 +21,7 @@ module_load_include('inc', 'voiptropo', 'includes/voiptropo');
  * Implements hook_voip_serverinfo().
  */
 function voiptropo_voipserver_info() {
-  $server = new voiptropoServer();
+  $server = new VoipTropoServer();
   return $server;
 }
 
@@ -44,41 +44,46 @@ function voiptropo_admin_form($configuration) {
   );
 
   $form['voiptropo_voice_token'] = array(
-    '#type' => 'textfield',
+    '#type' => 'password',
     '#title' => t('Voice Outbound Token'),
     '#description' => t("The Voice Outbound Token provided in your Tropo application settings."),
     '#default_value' => (isset($configuration['voiptropo_voice_token']) ? $configuration['voiptropo_voice_token'] : ''),
   );
 
   $form['voiptropo_sms_token'] = array(
-    '#type' => 'textfield',
+    '#type' => 'password',
     '#title' => t('Messaging Outbound Token'),
     '#description' => t("The Messaging Outbound Token provided in your Tropo application settings."),
     '#default_value' => (isset($configuration['voiptropo_sms_token']) ? $configuration['voiptropo_sms_token'] : ''),
   );
 
+  $server = voiptropo_voipserver_info();
+  $voices = VoipVoice::getVoices(NULL, NULL, NULL, $server->getId());
   $form['voipcall_voice_id'] = array(
     '#type' => 'select',
     '#title' => t('Default voice'),
     '#description' => t('Voice to be used in automatic text-to-speech generation.'),
-    '#options' => VoipTropoServer::getVoicesList(),
-    '#default_value' => VoipVoice::getDefaultVoice()->getVoiceId(),
+    //'#options' => VoipTropoServer::getVoicesList(),
+    '#options' => voipcall_get_voices_as_list($voices),
+    '#default_value' => $server->getDefaultVoice()->getVoiceId(),
   );
-
+  
+  $man_voices =  VoipVoice::getVoices(NULL, "man", NULL, $server->getId());
   $form['voipcall_man_voice_id'] = array(
     '#type' => 'select',
     '#title' => t('Default man voice'),
     '#description' => t('Man voice to be used in automatic text-to-speech generation.'),
-    '#options' => VoipTropoServer::getVoicesList(),
-    '#default_value' => VoipVoice::getDefaultManVoice()->getVoiceId(),
+    '#options' => voipcall_get_voices_as_list($man_voices),
+    '#default_value' => $server->getDefaultManVoice()->getVoiceId(),
   );
-
+  
+  $woman_voices =  VoipVoice::getVoices(NULL, "woman", NULL, $server->getId());
   $form['voipcall_woman_voice_id'] = array(
     '#type' => 'select',
     '#title' => t('Default woman voice'),
     '#description' => t('Woman voice to be used in automatic text-to-speech generation.'),
-    '#options' => VoipTropoServer::getVoicesList(),
-    '#default_value' => VoipVoice::getDefaultWomanVoice()->getVoiceId(),
+    '#options' => voipcall_get_voices_as_list($woman_voices),
+    '#default_value' => $server->getDefaultWomanVoice()->getVoiceId(),
   );
 
   return $form;
@@ -202,6 +207,7 @@ function voiptropo_voipscript_load_script($script_name, $vars = NULL) {
       break;
 
     case 'voiptropo_IM_demo':
+      //@todo: IM protocols are deprecated by Tropo
       $script = new VoipTropoScript('voiptropo_IM_demo');
       $text = "testing";
       $to = "my_IM_address@hotmail.com";
@@ -222,6 +228,7 @@ function voiptropo_voipscript_get_script_names() {
   $script_names[] = 'voiptropo_IM_demo';
   return $script_names;
 }
+
 function json_serialize($any) {
   return json_encode(json_wrap($any));
 }

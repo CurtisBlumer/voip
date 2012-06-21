@@ -172,6 +172,12 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
       }
     }
   }
+  
+  // load global $user based on call user
+  global $user;
+  $stored_user = $user;
+  $call->loadGlobalUser();
+  watchdog('voiptwilio', 'Logged user %uid in.', array('%uid' => $user->uid));
 
   if (in_array($channel, array('offline_text', 'text'))) {
     //Set text-related variables in the call object 
@@ -295,11 +301,11 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
         $twilio_record_url = $_REQUEST['RecordingUrl'] . $suffix;
         //Transfer the file to local server
         $file = _voiptwilio_transfer_file($twilio_record_url);
-        $script->setVar('recording_path', file_create_url($file['filepath']));
+        $script->setVar('recording_path', file_create_url($file->uri));
         $script->setVar('recording_public_url', $twilio_record_url);
         $script->setVar('recording_duration', $_REQUEST['RecordingDuration']);
         $script->setVar('recording_digits', $_REQUEST['Digits']);
-        $script->setVar('recording_fid', $file['fid']);
+        $script->setVar('recording_fid', $file->fid);
         $call->setScript($script);
         break;
       case 'process_empty_recording':
@@ -358,6 +364,13 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
   }
   // process the call script
   $rc = _voiptwilio_script_handler($call);
+  
+  // If global user has been replaced for call user.
+  // Process shouldn't go further, so just for good practice.
+  if(! empty($stored_user)) {
+    $user = $stored_user;
+    watchdog('voiptwilio', 'Reverted to logged in user %uid', array('%uid' => $user->uid));
+  }
 
   return; // NOTE: this function MUST NOT return any value.  If it does, the
 //       output to Twilio will get messed up with Drupal hmtl...
@@ -767,21 +780,32 @@ function _voiptwilio_script_handler($call) {
           break;
 
         case 'VoipCmdSendText':
-          $call->setCallStatus(VoipCall::IN_PROGRESS);
+          $call->setCallStatus(VoipCall::IN_PROGRESS);   
           $to = $script->evalString($cmd->getParam('to'));
-          //If "to" is empty then send message to the caller
-          if (!$to) {
-            $to = $script->evalString($script->getVar('caller_number'));
-          }
-
           $text = $script->evalString($cmd->getParam('text'));
           $network = $script->evalString($cmd->getParam('network'));
-
+          // If "to" is empty then send message to the person on the other
+          // side of the phone. Depending on the direction of the call, that
+          // might be either the caller or the callee.
+          if (!$to) {
+            $direction = $call->getDirection();
+            if ($direction == 'inbound') {
+              $to = $script->evalString($script->getVar('caller_number'));
+            }
+            else {
+              $to = $script->evalString($script->getVar('dest_number'));
+            }
+            if (!$to) {
+              watchdog('voiptwilio', 'Attempt to send '.$network.' to empty number', array(), WATCHDOG_ERROR);
+              $processing = TRUE;
+              break;
+            }
+          }
           if (voipscript_use_sms_framework()) {
-            //Use SMS Framework to send SMS message if user enabled this option
+            // Use SMS Framework to send SMS message if user enabled this option
             voipscript_send_sms_framework($to, $text);
           }
-          else if (strtolower($call->getCurrentChannel()) == 'offline_text') {
+          else if(strtolower($call->getCurrentChannel()) == 'offline_text'){
             //Use voip_text()
             $reply = TRUE;
             $call->setCurrentChannel('text');
@@ -796,23 +820,21 @@ function _voiptwilio_script_handler($call) {
             $callback_url = $menu_path . '/process_sms_callback/' . $cid;
             $callback = url($callback_url, array('absolute' => TRUE));
             $method = 'POST';
-
+          
             // Note: If no caller number provided, Twilio will automatically try
-//       to determine an appropriate value depending on whether the
-//       call is inbound or outbound. However, since that number might
-//       not be sms capable, it might incur in a processing error.
+            //       to determine an appropriate value depending on whether the
+            //       call is inbound or outbound. However, since that number might
+            //       not be sms capable, it might incur in a processing error.
             // Use the system's number as the default caller id
             $default_cid_number = variable_get('voipcall_cid_number', NULL);
-            $caller_id = $script->evalString($cmd->getParam('caller_id',  
-                                                         $default_cid_number));
-            $rc = TRUE;
-            switch (strtolower($network)) {
+            $caller_id = $script->evalString($cmd->getParam('caller_id',
+                                                         $default_cid_number)); 
+            $rc = TRUE;                                             
+            switch(strtolower($network)){
               default:
-                $params = array(
-                  '@network' => $network,
-                  '@script_name' => $script->getName(),
-                  '@script' => print_r($script, true),
-                );
+                $params = array('@network' => $network,
+                                '@script_name' => $script->getName(),
+                                '@script' => print_r($script,true));
                 $msg = "Invalid 'network' parameter '@network' for SendText command in script '@script_name': @script";
                 $call->report_error('voiptwilio', $msg, $params);
                 $rc = FALSE;
@@ -823,10 +845,10 @@ function _voiptwilio_script_handler($call) {
                 $response .= '<Sms action="' . $action
                              . '" statusCallback="' . $callback
                              . '" method="' . $method;
-                if ($to) {
+                if($to){
                   $response .= '" to="' . $to;
                 }
-                if ($caller_id) {
+                if($caller_id){
                   $response .= '" from="' . $caller_id;
                 }
                 $response .= '" >';
@@ -836,7 +858,7 @@ function _voiptwilio_script_handler($call) {
                 // being executed, set $processing to FALSE
                 $processing = FALSE;
                 break;
-            }
+            } 
           }
           break;
 
@@ -847,7 +869,9 @@ function _voiptwilio_script_handler($call) {
           break;
 
         case 'VoipCmdSetVoice':
-          $voice = $script->evalString($cmd->getParam('voice'));
+          $voice_id = $script->evalString($cmd->getParam('voice'));
+          $voice = VoipVoice::getVoice($voice_id);
+          $voice_id = $voice->getVoiceId();
           $script->setVoice($voice_id);
           break;
 
@@ -892,7 +916,7 @@ function _voiptwilio_script_handler($call) {
  * Send responses to Twilio
  */
 function _voiptwilio_send_response($response) {
-  $output .= '<?xml version="1.0" encoding="UTF-8" ?>';
+  $output = '<?xml version="1.0" encoding="UTF-8" ?>';
   $output .= '<Response>';
   $output .= $response;
   $output .= '</Response>';
@@ -1071,6 +1095,7 @@ define('VOIPTWILIO_URL_CHECK', '#(https?://\S+(?<![,.;?\:\!]))#');
  *   The prompt as a TwilioML sequence to be sent to Twilio
  */
 function _voiptwilio_generate_audio_response($script, $prompt, $loop = 1) {
+  $response = '';
   if (is_string($prompt) && (substr($prompt, 0, 1) == '^')) {
     $prompt = $script->evalString($prompt);
   }
@@ -1162,58 +1187,12 @@ function _voiptwilio_numbers_add_space($matches) {
   return $number_with_space;
 }
 
-function _voiptwilio_transfer_file($url, $validators = array()) {
-  $filename = rawurldecode(basename($url));
-    $filepath = file_create_filename($filename, file_directory_temp());
-    
-    // Then make the actual request to download the file.
-    $data = file_get_contents($url); 
-    
-    //Save it to temporary file.
-    if ($fp = @fopen($filepath, 'w+')) {
-        fputs($fp, $data); 
-        fclose($fp);
-    }
-    
-    $file = _voiptwilio_file_save_upload($filepath);
-
-    // Delete the temporary file.
-    @unlink($filepath);
-
-    if ($file) {
-      return $file;
-    }
-    
-    return NULL;
-}
-
-function _voiptwilio_file_save_upload($filepath) {
-  global $user;
-  $dest = file_directory_path();
-  $file = new stdClass();
-  $file->uid = $user->uid;
-  $file->filename = basename($filepath);
-  $file->filepath = $filepath;
-  $file->filemime = module_exists('mimedetect') ? mimedetect_mime($file) : file_get_mimetype($file->filename);
-
-  // Allow only mp3 and wav files
-  if (!preg_match('/\.(mp3|wav)$/i', $file->filename)) {
-    return 0;
-  }
-
-  $file->source = 'voiptwilio';
-  $file->destination = file_destination(file_create_path($dest .'/'. $file->filename), FILE_EXISTS_RENAME);
-  $file->filesize = filesize($filepath);
-  if (!file_copy($file, $file->destination, FILE_EXISTS_RENAME)) {
-    watchdog('voiptwilio', 'Upload error. Could not move file %file to destination %destination.', array('%file' => $file->filename, '%destination' => $file->destination));
-    return 0;
-  }
-
-  // If we made it this far it's safe to record this file in the database.
-  $file->status = FILE_STATUS_TEMPORARY;
-  $file->timestamp = time();
-  // Insert new record to the database.
-  drupal_write_record('files', $file);
-  
-  return (array)$file;
+/*Save the audio file from Twilio to local server*/
+function _voiptwilio_transfer_file($url) {
+  $dest = file_default_scheme() . '://' ;
+  $filename = basename($url);
+  $file_destination = file_destination($dest . $filename, FILE_EXISTS_RENAME);
+  $data = file_get_contents($url); 
+  $file = file_save_data($data, $file_destination);
+  return $file;
 }

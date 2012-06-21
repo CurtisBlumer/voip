@@ -159,7 +159,10 @@ class VoipScript {
         }
       } 
     }
-    natcasesort($sorted_names);
+    if(!$include_info) {
+      //Natcasesort expects a single dimension array otherwise throws Array to string conversion
+      natcasesort($sorted_names);
+    }
     return $sorted_names;
   }
 
@@ -259,7 +262,7 @@ class VoipScript {
    * Returns the next script command to be executed
    */
   function getNextCommand() {
-    $cmd = $this->commands[$this->index];
+    $cmd = isset($this->commands[$this->index]) ? $this->commands[$this->index] : NULL;
     $this->index++;
     return $cmd;
   }
@@ -614,10 +617,8 @@ class VoipScript {
       'i' => 'invalid_option'
     );
     $input_options = $input_options ? $input_options : $default_input_options;
-    $input_options['t'] = $input_options['t']
-                        ? $input_options['t'] : 'no_input_received';
-    $input_options['i'] = $input_options['i']
-                        ? $input_options['i'] : 'invalid_option';
+    $input_options['t'] = isset($input_options['t']) ? $input_options['t'] : 'no_input_received';
+    $input_options['i'] = isset($input_options['i']) ? $input_options['i'] : 'invalid_option';
     $params['input_options'] = $input_options;
     $msg_tmp = t('Invalid option selected.');
     $invalid_msg = $invalid_msg ? $invalid_msg : $msg_tmp;

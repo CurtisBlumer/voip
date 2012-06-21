@@ -180,6 +180,12 @@ function _voipplivo_call_handler($plivo_action, $cid = NULL) {
        }*/
     }
   }
+  
+  // load global $user based on call user
+  global $user;
+  $stored_user = $user;
+  $call->loadGlobalUser();
+  watchdog('voipplivo', 'Logged user %uid in.', array('%uid' => $user->uid));
 
   //Left because offline_text
   if (in_array($channel, array('offline_text', 'text'))) {
@@ -298,12 +304,12 @@ function _voipplivo_call_handler($plivo_action, $cid = NULL) {
         watchdog('voipplivo', "Record response: " . print_r($_REQUEST, true));
         //Transfer the file to local server
         $file = _voipplivo_transfer_file($plivo_record_url);
-        $script->setVar('recording_path', file_create_url($file['filepath']));
+        $script->setVar('recording_path', file_create_url($file->uri));
         //@todo For now we set this to same recording_path because public url is not available in Plivo
-        $script->setVar('recording_public_url', file_create_url($file['filepath']));
+        $script->setVar('recording_public_url', file_create_url($file->uri));
         $script->setVar('recording_duration', $_REQUEST['RecordingDuration']);
         $script->setVar('recording_digits', $_REQUEST['Digits']);
-        $script->setVar('recording_fid', $file['fid']);
+        $script->setVar('recording_fid', $file->fid);
         $call->setScript($script);
         break;
       case 'process_empty_recording':
@@ -365,6 +371,13 @@ function _voipplivo_call_handler($plivo_action, $cid = NULL) {
    }*/
   // process the call script
   $rc = _voipplivo_script_handler($call);
+  
+  // If global user has been replaced for call user.
+  // Process shouldn't go further, so just for good practice.
+  if(! empty($stored_user)) {
+    $user = $stored_user;
+    watchdog('voipplivo', 'Reverted to logged in user %uid', array('%uid' => $user->uid));
+  }
 
   return; // NOTE: this function MUST NOT return any value.  If it does, the
 //       output to Plivo will get messed up with Drupal hmtl...
@@ -784,22 +797,33 @@ function _voipplivo_script_handler($call) {
           break;
 
         case 'VoipCmdSendText':
-          $call->setCallStatus(VoipCall::IN_PROGRESS);
+          $call->setCallStatus(VoipCall::IN_PROGRESS);   
           $to = $script->evalString($cmd->getParam('to'));
-          //If "to" is empty then send message to the caller
-          if (!$to) {
-            $to = $script->evalString($script->getVar('caller_number'));
-          }
-
           $text = $script->evalString($cmd->getParam('text'));
           $network = $script->evalString($cmd->getParam('network'));
-
+          // If "to" is empty then send message to the person on the other
+          // side of the phone. Depending on the direction of the call, that
+          // might be either the caller or the callee.
+          if (!$to) {
+            $direction = $call->getDirection();
+            if ($direction == 'inbound') {
+              $to = $script->evalString($script->getVar('caller_number'));
+            }
+            else {
+              $to = $script->evalString($script->getVar('dest_number'));
+            }
+            if (!$to) {
+              watchdog('voipplivo', 'Attempt to send '.$network.' to empty number', array(), WATCHDOG_ERROR);
+              $processing = TRUE;
+              break;
+            }
+          }
+          
           if (voipscript_use_sms_framework()) {
             //Use SMS Framework to send SMS message if user enabled this option
             voipscript_send_sms_framework($to, $text);
           }
-          else if (strtolower($call->getCurrentChannel()) == 'offline_text') {
-            //@todo Check about this in using with Plivo? Does it make sense?
+          else if(strtolower($call->getCurrentChannel()) == 'offline_text'){
             //Use voip_text()
             $reply = TRUE;
             $call->setCurrentChannel('text');
@@ -807,7 +831,8 @@ function _voipplivo_script_handler($call) {
             $processing = TRUE;
           }
           else {
-            //Else: Plivo doesn't support SMS
+            watchdog('voipplivo', 'Attempt to send an SMS without SMS Framework', array(), WATCHDOG_ERROR);
+            $processing = TRUE;
           }
           break;
 
@@ -819,6 +844,8 @@ function _voipplivo_script_handler($call) {
 
         case 'VoipCmdSetVoice':
           $voice = $script->evalString($cmd->getParam('voice'));
+          $voice = VoipVoice::getVoice($voice_id);
+          $voice_id = $voice->getVoiceId();
           $script->setVoice($voice);
           break;
 
@@ -1039,23 +1066,25 @@ define('VOIPPlivo_URL_CHECK', '#(https?://\S+(?<![,.;?\:\!]))#');
  *   The prompt as a PlivoML sequence to be sent to Plivo
  */
 function _voipplivo_generate_audio_response($script, $prompt, $loop = 1) {
-  if (is_string($prompt) && (substr($prompt, 0, 1) == '^')) {
+  if(is_string($prompt) && (substr($prompt, 0, 1) == '^')){
     $prompt = $script->evalString($prompt);
   }
 
-  if (is_string($prompt)) {
+  if(is_string($prompt)){
     $prompt_list[] = new VoipPrompt($prompt);
   }
-  else if (is_object($prompt)) {
+  else if (is_object($prompt)){
     $prompt_list[] = $prompt;
   }
   else {
     $prompt_list = $prompt;
   }
 
-  foreach ($prompt_list as $p) {
+  $default_voice_id = $script->getVoice();
+  
+  foreach($prompt_list as $p) {
     $text = $script->evalString($p->getText());
-    $voice_id = $p->getVoice();
+    $voice_id = $p->getVoice() ? $p->getVoice() : $default_voice_id;
     $voice = VoipVoice::getVoice($voice_id);
     $language = $voice->getLanguage();
     $as_tmp = $p->getAs() ? $script->evalString($p->getAs()) : '';
@@ -1064,25 +1093,24 @@ function _voipplivo_generate_audio_response($script, $prompt, $loop = 1) {
     // split the text into audio URLs and text elements
     $elements =
       preg_split(VOIPPlivo_URL_CHECK, $text, -1, PREG_SPLIT_DELIM_CAPTURE);
-
+  
     // process each element
     $url_flag = FALSE;
-    foreach ($elements as $element) {
+    foreach($elements as $element) {
       $element = trim($element);
-      if ($element) {
-        if (_voipplivo_is_url($element)) {
+      if($element) {
+        if(_voipplivo_is_url($element)){
           $response .= "<Play>$element</Play>";
           $url_flag = TRUE;
-        }
-        else {
-          if ($url_flag) {
+        } else {
+          if($url_flag) {
             // remove punctuation associated with the previous url element
             // i.e. the '!' in $text = 'Hello $audio_name!"
-            $element = ltrim($element, '?!.;,:');
+            $element = ltrim($element,'?!.;,:');
             $url_flag = FALSE;
           }
-          if ($element) {
-            if ($as == 'digits') {
+          if($element) {
+            if($as == 'digits'){
               //Convert numbers into digits
               $element = _voipplivo_parse_numbers($element);
             }
@@ -1092,10 +1120,10 @@ function _voipplivo_generate_audio_response($script, $prompt, $loop = 1) {
       }
     }
   }
-
+  
   // process the $loop parameter
   $counter = $loop - 1;
-  while ($counter > 0) {
+  while($counter > 0){
     $response .= $response;
     $counter--;
   }
@@ -1126,30 +1154,13 @@ function _voipplivo_numbers_add_space($matches) {
   return $number_with_space;
 }
 
-function _voipplivo_transfer_file($url, $validators = array()) {
-  $filename = rawurldecode(basename($url));
-  $filepath = file_create_filename($filename, file_directory_temp());
-
-  // Then make the actual request to download the file.
-  $data = file_get_contents($url);
-
-  //Save it to temporary file.
-  if ($fp = @fopen($filepath, 'w+')) {
-    fputs($fp, $data);
-    fclose($fp);
-  }
-
-  //Save it to default files directory.
-  $destination = file_directory_path();
-  $file = field_file_save_file($filepath, $validators, $destination);
-  // Delete the temporary file.
-  @unlink($filepath);
-
-  if ($file) {
-    return $file;
-  }
-
-  return NULL;
+function _voipplivo_transfer_file($url) {
+  $dest = file_default_scheme() . '://' ;
+  $filename = basename($url);
+  $file_destination = file_destination($dest . $filename, FILE_EXISTS_RENAME);
+  $data = file_get_contents($url); 
+  $file = file_save_data($data, $file_destination);
+  return $file;
 }
 
 function _voipplivo_validate_request() {

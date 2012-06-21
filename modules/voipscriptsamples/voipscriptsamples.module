@@ -2,7 +2,9 @@
 /**
  * @file Provides sample scripts that demonstrate the capabilities of the VoIP Drupal platform
  */
-
+foreach (array('voipscriptsamples_weather.inc', 'voipscriptsamples_sms_group.inc') as $file) {
+  require_once(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . $file);
+}
 /**
  * Implements hook_voipscript_load_script().
  */
@@ -38,6 +40,7 @@ function voipscriptsamples_voipscript_get_script_names() {
  * Sample scripts that highlight VoIP Drupal capabilities
  */
 function _voipscriptsamples_load_sample_scripts($script_name) {
+  $script = NULL;
   if ($script_name == 'voipscript_dial_test') {
     $script = _voipscriptsamples_get_dial_test_script();
   }
@@ -426,7 +429,7 @@ function _voipscriptsamples_get_send_sms() {
 
   $script->addLabel('accept number');
   $script->addSay(t('About to send text message'));
-  $text = 'Hello from the VoIP Drupal platform';
+  $text = t('Hello from the VoIP Drupal platform');
   $script->addSendText($text, '%sms_number');
   $args = array('@result' => '%send_text_status');
   $script->addSay(t('The SMS command returned: @result', $args));

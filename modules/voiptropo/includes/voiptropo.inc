@@ -80,6 +80,7 @@ function _voiptropo_call_handler($tropo_action = '', $cid = NULL, $dial_response
     $to = $session->getParameters('dest_number');
   }
   else {
+    //@todo: D7 throws warnings, in some tropo_action callbacks there is no session object
     $from = $json->session->from->id;
     $to = $json->session->to->id;
   }
@@ -183,8 +184,15 @@ function _voiptropo_call_handler($tropo_action = '', $cid = NULL, $dial_response
        }*/
     }
   }
+  
+  // load global $user based on call user
+  global $user;
+  $stored_user = $user;
+  $call->loadGlobalUser();
+  watchdog('voiptropo', 'Logged user %uid in.', array('%uid' => $user->uid));
+  
+  //Set text-related variables in the call object
   if (in_array($channel, array('offline_text', 'text'))) {
-    //Set text-related variables in the call object
     $inbound_text_contents = $session->getInitialText();
     $call->setTextVariables($inbound_text_contents, $from, $to, $network);
   }
@@ -290,18 +298,17 @@ function _voiptropo_call_handler($tropo_action = '', $cid = NULL, $dial_response
         $call->setScript($script);
         break;
       case 'save_record':
-        $validators = array();
-        $filename = $_FILES['filename']['name'];
-        $dest = file_directory_path();
-        $file = _voiptropo_file_save_upload($filename, $validators, $dest);
-        $script = $call->getScript();
-        $script->setVar('recording_path', file_create_url($file->filepath));
-        $script->setVar('recording_public_url', file_create_url($file->filepath));
-        $script->setVar('recording_digits', NULL);
-        $script->setVar('recording_fid', $file->fid);
-        $call->setScript($script);
-        // update the voipcall with the new values
-        $call = $call->save();
+        $file = _voiptropo_file_save_upload();
+        if ($file) {
+          $script = $call->getScript();
+          $script->setVar('recording_path', file_create_url($file->uri));
+          $script->setVar('recording_public_url', file_create_url($file->uri));
+          $script->setVar('recording_digits', NULL);
+          $script->setVar('recording_fid', $file->fid);
+          $call->setScript($script);
+          // update the voipcall with the new values
+          $call = $call->save();
+        }
         return;
         break;
       case 'process_record':
@@ -330,6 +337,7 @@ function _voiptropo_call_handler($tropo_action = '', $cid = NULL, $dial_response
 
       case 'process_send_sms':
       case 'process_sms_callback':
+        //@todo: process_sms_callback is never called (commented out in cmdsendtext)
         $call = _voiptropo_process_sms_response($call, $dial_response_name);
         break;
     }
@@ -431,6 +439,13 @@ function _voiptropo_call_handler($tropo_action = '', $cid = NULL, $dial_response
 
   // send response back to tropo
   $tropo->renderJSON();
+  
+  // If global user has been replaced for call user.
+  // Process shouldn't go further, so just for good practice.
+  if(! empty($stored_user)) {
+    $user = $stored_user;
+    watchdog('voiptropo', 'Reverted to logged in user %uid', array('%uid' => $user->uid));
+  }
 
   return; // NOTE: this function MUST NOT return any value.  If it does, the
 //       output to tropo will get messed up with Drupal hmtl...
@@ -793,6 +808,9 @@ function _voiptropo_script_handler($call, &$tropo) {
               $say_params['as'] = $as;
             }
             $say_params['voice'] = $voice_id;
+            //Solution for Tropo error with sprintf and url encoded strings
+            //https://www.tropo.com/bizblog/viewer?&bb-name=tropo_support&bb-q=sprintf&&bb-cid=99&bb-tid=1193463#bb
+            $text = str_replace("%","%%",$text);
             $tropo->say($text, $say_params);
           }
 
@@ -869,6 +887,9 @@ function _voiptropo_script_handler($call, &$tropo) {
               }
 
               $say_params['voice'] = $voice_id;
+              //Solution for Tropo error with sprintf and url encoded strings
+              //https://www.tropo.com/bizblog/viewer?&bb-name=tropo_support&bb-q=sprintf&&bb-cid=99&bb-tid=1193463#bb
+              $text = str_replace("%","%%",$text);
               $tropo->say($text, $say_params);
             }
           }
@@ -880,9 +901,9 @@ function _voiptropo_script_handler($call, &$tropo) {
           $cid = $call->getCid();
 
           $callback_url = $menu_path . '/process_sms_callback/' . $cid;
-          $callback_continue = url($callback_url . '/continue', array('absolute' => TRUE));
+          //$callback_continue = url($callback_url . '/continue', array('absolute' => TRUE));
           $callback_error = url($callback_url . '/error', array('absolute' => TRUE));
-          $callback_hangup = url($callback_url . '/hangup', array('absolute' => TRUE));
+          //$callback_hangup = url($callback_url . '/hangup', array('absolute' => TRUE));
           $callback_incomplete = url($callback_url . '/incomplete', array('absolute' => TRUE));
 
           $to = $script->evalString($cmd->getParam('to'));
@@ -939,9 +960,9 @@ function _voiptropo_script_handler($call, &$tropo) {
           break;
 
         case 'VoipCmdSetVoice':
-          $voice = $script->evalString($cmd->getParam('voice'));
-          //$voice_id = VoipVoice::getVoice($voice);
-          $voice_id = VoipTropoServer::getVoiceId($voice, $language);
+          $voice_id = $script->evalString($cmd->getParam('voice'));
+          $voice = VoipVoice::getVoice($voice_id);
+          $voice_id = $voice->getVoiceId();
           $script->setVoice($voice_id);
           break;
 
@@ -976,71 +997,18 @@ function _voiptropo_script_handler($call, &$tropo) {
   return $rc;
 }
 
-function _voiptropo_file_save_upload($source, $validators, $dest) {
-  global $user;
-  $extensions = 'mp3 wav';
-  // Add in our check of the the file name length.
-  $validators['file_validate_name_length'] = array();
-
-  // Begin building file object.
-  $file = new stdClass();
-  $file->filename = file_munge_filename(trim(basename($_FILES['filename']['name']), '.'), $extensions);
-  $file->filepath = $_FILES['filename']['tmp_name'];
-  $file->filemime = file_get_mimetype($file->filename);
-
-  $file->source = $source;
-  $file->destination = file_destination(file_create_path($dest . '/' . $file->filename), $replace);
-  $file->filesize = $_FILES['filename']['size'];
-
-  // Call the validation functions.
-  $errors = array();
-  foreach ($validators as $function => $args) {
-    array_unshift($args, $file);
-    // Make sure $file is passed around by reference.
-    $args[0] = &$file;
-    $errors = array_merge($errors, call_user_func_array($function, $args));
+function _voiptropo_file_save_upload() {
+  $upload_dir_stream = file_default_scheme() . '://' ;
+  $_FILES['files'] = $_FILES['filename'];
+  foreach ($_FILES['files'] as $key => $value) {
+      $_FILES['files'][$key] = array(0 => $value);
   }
-
-  // Rename potentially executable files, to help prevent exploits.
-  if (preg_match('/\.(php|pl|py|cgi|asp|js)$/i', $file->filename) && (substr($file->filename, -4) != '.txt')) {
-    $file->filemime = 'text/plain';
-    $file->filepath .= '.txt';
-    $file->filename .= '.txt';
-    // As the file may be named example.php.txt, we need to munge again to
-    // convert to example.php_.txt, then create the correct destination.
-    $file->filename = file_munge_filename($file->filename, $extensions);
-    //TODO: file_create_path() and file_check_directory() were merged into file_prepare_directory()
-    $file->destination = file_destination(file_create_path($dest . '/' . $file->filename), $replace);
+  $validators['file_validate_extensions']=array('mp3', 'wav');
+  if (!$file = file_save_upload(0, $validators, $upload_dir_stream)) {
+    watchdog('audiorecorder_field', "ERROR - file_save_upload failed", array(), WATCHDOG_ERROR);
+    return NULL;
   }
-
-
-  // Check for validation errors.
-  if (!empty($errors)) {
-    $message = t('The selected file %name could not be uploaded.', array('%name' => $file->filename));
-    if (count($errors) > 1) {
-      $message .= '<ul><li>' . implode('</li><li>', $errors) . '</li></ul>';
-    }
-    else {
-      $message .= ' ' . array_pop($errors);
-    }
-    drupal_set_message($message);
-    return 0;
-  }
-
-  // Move uploaded files from PHP's upload_tmp_dir to Drupal's temporary directory.
-  // This overcomes open_basedir restrictions for future file operations.
-  $file->filepath = $file->destination;
-  if (!move_uploaded_file($_FILES['filename']['tmp_name'], $file->filepath)) {
-    watchdog('voiptropo', 'Upload error. Could not move uploaded file %file to destination %destination.', array('%file' => $file->filename, '%destination' => $file->filepath));
-    return 0;
-  }
-
-  // If we made it this far it's safe to record this file in the database.
-  $file->uid = $user->uid;
-  $file->status = ~FILE_STATUS_PERMANENT;
-  $file->timestamp = REQUEST_TIME;
-  drupal_write_record('files', $file);
-  return $file;
+  return $file;  
 }
 
 /**
@@ -1171,6 +1139,9 @@ function _voiptropo_process_sms_response($call, $sms_status_tmp) {
       $sms_status = VoipCall::TEXT_SENT;
       break;
   }
+  $script = $call->getScript();
+  $script->setVar('send_text_status', $sms_status);
+  $call->setScript($script);
   $call->setTextStatus($sms_status);
   return $call;
 }
@@ -1226,11 +1197,13 @@ function _voiptropo_get_input($type, $call, $cmd,    $script, &$tropo) {
     $response_url = $menu_path . '/process_get_input/' . $cid;
     $mode = 'dtmf';
     $num_digits = $script->evalString($cmd->getParam('num_digits'), 1);
-    if (empty($num_digits)) {
-      $num_digits = 1;
+     if (empty($num_digits)) {
+      //If empty it means that number of digits is variable:
+      $num_digits = 999;
     }
     $grxml_path = "voip/tropo/grammar/numeric_star_hash/" . $num_digits;
     $choices = url($grxml_path, array('absolute' => TRUE));
+    $recognizer = NULL;
   }
   $action = url($response_url, array('absolute' => TRUE));
   $attempts = 1;

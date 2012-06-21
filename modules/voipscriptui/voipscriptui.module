@@ -30,15 +30,29 @@ function voipscriptui_voipscript_get_script_names() {
  */
 function voipscriptui_voipscript_load_script($script_name, $options = NULL) {
   $script = NULL;
-  $param = array(
+  $script_node = NULL;
+  //node_load with params is deprecated in D7 in favor of EntityFieldQuery()
+  /*$param = array(
     'type' => 'voipscriptui',
     'title' => $script_name,
     'status' => 1,
   );
-  $script_node = node_load($param);
+  $script_node = node_load($param);*/
+  $query = new EntityFieldQuery();
+  $entities = $query->entityCondition('entity_type', 'node')
+  ->propertyCondition('type', 'voipscriptui')
+  ->propertyCondition('status', 1)
+  ->propertyCondition('title', $script_name)
+  ->range(0,1)
+  ->execute();
+
+  if (!empty($entities['node'])) {
+    $script_node = node_load(array_shift(array_keys($entities['node'])));
+  }
+
   if ($script_node) {
     $script = new VoipScript($script_name);
-    $script_code = field_get_items('node', $node, 'field_voipscriptui_code');
+    $script_code = field_get_items('node', $script_node, 'field_voipscriptui_code');
     $script_code = $script_code[0]['value'];
     ob_start();
     if (eval("$script_code") === false) {
@@ -146,18 +160,22 @@ function _voipscriptui_check_view_access() {
  * Implements hook_form_alter().
  */
 function voipscriptui_form_alter(&$form, &$form_state, $form_id) {
-  if ($form_id == "voipscriptui_node_form") {
+  if ($form_id == 'voipscriptui_node_form') {
     if (isset($_GET['clone_voipscript'])) {
       if (isset($_GET['type']) && $_GET['type'] == 'node') {
         $nid = $_GET['clone_voipscript'];
-        $code = db_query("SELECT field_voipscriptui_code_value FROM {field_data_field_voipscriptui_code} WHERE nid = :nid", array(':nid' => $nid))->fetchField();
+        $node = node_load($nid);
+        $field_voipscriptui_code = field_get_items('node', $node, 'field_voipscriptui_code');
+        $code = $field_voipscriptui_code[0]['value'];
       }
       else {
         $script_name = $_GET['clone_voipscript'];
         $code = _voipscriptui_reverse_parser($script_name);
         $code = str_replace("<br>", "\n", $code);
       }
-      $form['field_voipscriptui_code'][0]['#default_value']['value'] = trim($code);
+      //Get correct field language: http://drupal.stackexchange.com/questions/25839/best-practice-for-drupal-7-language-key-for-und-in-hook-form-alter
+      $lang = $form['field_voipscriptui_code']['#language'];
+      $form['field_voipscriptui_code'][$lang][0]['value']['#default_value'] = trim($code);
     }
   }
 }
@@ -222,10 +240,52 @@ function voipscriptui_scripts_page() {
       'field' => 'clone',
     );
   }
+  
+  // get all VoIP scripts
+  if($view_all){
+    $scripts = VoipScript::getScriptNames(NULL, TRUE);
+    foreach ($scripts as $script) {
+      switch ($script['module_id']) {
+        //Some modules have their own view and clone links
+        case 'voipscriptui':
+          //Scripts created by VoIP Script UI
+          //$node = node_load(array('title' => $script['name'], 'type' => 'voipscriptui'));
+          $query = new EntityFieldQuery();
+          $entities = $query->entityCondition('entity_type', 'node')
+          ->propertyCondition('type', 'voipscriptui')
+          ->propertyCondition('title', $script['name'])
+          ->range(0,1)
+          ->execute();
+
+          //if (!empty($entities['node'])) {
+          $nid = array_shift(array_keys($entities['node']));
+          //}
+          $view = l('view','node/' . $nid);
+          $clone = l('clone','node/add/voipscriptui', array('query' => array('clone_voipscript' => $nid, 'type' => 'node')));
+        break;
+        default:
+          $view = l('view','voip/voipscripts/view/' . $script['name']);
+          $clone = l('clone','node/add/voipscriptui', array('query' => array('clone_voipscript' => $script['name'])));
+        break; 
+      }
+        $row= array(
+          'title' => $script['name'],
+          'code' => $view,
+          'type' => $script['module_name'],
+        );
+    
+        if ($clone_all) {
+          $row['clone'] = $clone;
+        }
+        $data[strtolower($script['name'])] = $row;
+    }
+  }
+
+  
 
   // get voipscriptui scripts
   //$res = db_query("SELECT nid, title FROM {node} WHERE type = :type", array(':type' => 'voipscriptui'))->fetchAssoc();
-  $res = db_select('node', 'n')
+  /*$res = db_select('node', 'n')
   ->extend('PagerDefault')
   ->extend('TableSort')
   ->fields('n', array('nid', 'title'))
@@ -265,9 +325,9 @@ function voipscriptui_scripts_page() {
       }
     }
   }
-
+*/
   ksort($data);
-  $output .= theme('table', array('header' => $headers, 'rows' => $data));
+  $output = theme('table', array('header' => $headers, 'rows' => $data));
   $output .= theme('pager', array('tags' => NULL, 'element' => 0));
   return $output;
 }
@@ -291,7 +351,8 @@ function _voipscriptui_get_complex_param($param) {
 }
 
 function _voipscriptui_reverse_parser($script_name) {
-  $script = VoipScript::loadScript($script_name, $vars);
+  $script = VoipScript::loadScript($script_name);
+  $output = '';
   $cmd = $script->getNextCommand();
   while ($cmd) {
     $cmd_id = $cmd->getId();
