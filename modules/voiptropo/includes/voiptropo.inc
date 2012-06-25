@@ -71,8 +71,8 @@ function _voiptropo_call_handler($tropo_action = '', $cid = NULL, $dial_response
     }
   }
   //Determine channel and network
-  $channel = strtolower($json->session->to->channel);
-  $network = strtolower($json->session->to->network);
+  $channel = isset($json->session->to->channel) ? strtolower($json->session->to->channel) : NULL;
+  $network = isset($json->session->to->network) ? strtolower($json->session->to->network) : NULL;
 
 
   if ($tropo_action == 'process_outbound_calls') {
@@ -81,8 +81,8 @@ function _voiptropo_call_handler($tropo_action = '', $cid = NULL, $dial_response
   }
   else {
     //@todo: D7 throws warnings, in some tropo_action callbacks there is no session object
-    $from = $json->session->from->id;
-    $to = $json->session->to->id;
+    $from = isset($json->session->from->id) ? $json->session->from->id : NULL;
+    $to = isset($json->session->to->id) ? $json->session->to->id : NULL;
   }
 
   if (!$cid) {

@@ -307,7 +307,5 @@ function voipcall_update_6102() {
  * Allow longer scripts to be stored.
  */
 function voipcall_update_6103() {
-  $ret = array();
-  db_change_field($ret, 'voipcall', 'script', 'script', array('type' => 'text', 'size' => 'big'));
-  return $ret;
+  db_change_field('voipcall', 'script', 'script', array('type' => 'text', 'size' => 'big'));
 }

@@ -629,7 +629,8 @@ class VoipCall {
         $data->call_channel = 'voice';
       }
       if (!isset($details->current_channel)) {
-        $data->current_channel = 'voice';
+        //$data->current_channel = 'voice';
+        $details->current_channel = 'voice';
       }
 
       // initialize 'Network' fields
@@ -641,9 +642,8 @@ class VoipCall {
       }
 
       // initialize voice call script with the default inbound/outbound one
-      $dir_tmp = $details->direction;
-      $direction = $dir_tmp ? $dir_tmp
-                              : $data->direction;
+      $direction = isset($details->direction) ? $details->direction : $data->direction;
+      
       if (!isset($details->script)) {
         if ($details->current_channel == 'text' || $details->current_channel == 'offline_text') {
           $script_name = voipcall_get_default_inbound_text_script_name();
@@ -690,9 +690,9 @@ class VoipCall {
 
     // update voipcall-specific fields
 
-    $new_call_id = $details->call_id;
-    if (isset($new_call_id)) {
-      $data->call_id = $new_call_id;
+
+    if (isset($details->call_id)) {
+      $data->call_id = $details->call_id;
     }
 
     $new_dest_number = isset($details->dest_number) ? $details->dest_number : NULL;
@@ -715,12 +715,12 @@ class VoipCall {
       $data->caller_name = $new_caller_name;
     }
 
-    $new_call_status = $details->status;
+    $new_call_status = isset($details->status) ? $details->status : NULL;
     if (isset($new_call_status)) {
       $data->status = $new_call_status;
     }
 
-    $new_answered_by = $details->answered_by;
+    $new_answered_by = isset($details->answered_by) ? $details->answered_by : NULL;
     if (isset($new_answered_by)) {
       $data->answered_by = $new_answered_by;
     }
@@ -730,17 +730,17 @@ class VoipCall {
       $data->text_status = $new_text_status;
     }
 
-    $new_source = $details->source;
+    $new_source = isset($details->source) ? $details->source : NULL;
     if (isset($new_source)) {
       $data->source =  $new_source;
     }
 
-    $new_direction = $details->direction;
+    $new_direction = isset($details->direction) ? $details->direction : NULL;
     if (isset($new_direction)) {
       $data->direction =  $new_direction;
     }
 
-    $new_start_time = $details->start_time;
+    $new_start_time = isset($details->start_time) ? $details->start_time : NULL;
     if (!isset($new_start_time)) {
       $new_start_time = REQUEST_TIME;
     }
@@ -766,22 +766,22 @@ class VoipCall {
       $data->error_message = $new_error_message;
     }
 
-    $call_channel = $details->call_channel;
+    $call_channel = isset($details->call_channel) ? $details->call_channel : NULL;
     if (isset($call_channel)) {
       $data->call_channel = $call_channel;
     }
 
-    $current_channel = $details->current_channel;
+    $current_channel = isset($details->current_channel) ? $details->current_channel : NULL;
     if (isset($current_channel)) {
       $data->current_channel = $current_channel;
     }
 
-    $call_network = $details->call_network;
+    $call_network = isset($details->call_network) ? $details->call_network : NULL;
     if (isset($call_network)) {
       $data->call_network = $call_network;
     }
 
-    $current_network = $details->current_network;
+    $current_network = isset($details->current_network) ? $details->current_network : NULL;
     if (isset($current_network)) {
       $data->current_network = $current_network;
     }

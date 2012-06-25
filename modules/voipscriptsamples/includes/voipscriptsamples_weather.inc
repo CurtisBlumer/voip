@@ -176,7 +176,7 @@ function _voipscriptsamples_get_weather_info($woeid, $unit = 'f') {
 function _voipscriptsamples_getWoeidFromZip($zip) {
   static $woeidFromZip = array();
 
-  $woeid = $woeidFromZip[$zip];
+  $woeid = isset($woeidFromZip[$zip]) ? $woeidFromZip[$zip] : NULL;
 
   if (!$woeid) {
     $q = "select woeid from geo.places where text='$zip' limit 1";
