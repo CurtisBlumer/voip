@@ -69,7 +69,7 @@ function voipcall_menu() {
 }
 
 /**
- * Implements hook_permission().
+ * Implementation of hook_permission().
  */
 function voipcall_permission() {
   return array(
@@ -81,6 +81,16 @@ function voipcall_permission() {
       'title' => t('Use PHP input for VoIP Script (dangerous - grant with care)'),
       'description' => t('Use PHP input for VoIP Script (dangerous - grant with care)'),
     ),
+  );
+}
+
+/**
+ * Implementation of hook_views_api().
+ */
+function voipcall_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'voipcall') . '/views',
   );
 }
 
