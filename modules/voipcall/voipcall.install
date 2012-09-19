@@ -107,6 +107,10 @@ function voipcall_schema() {
         'type' => 'varchar',
         'length' => 255,
       ),
+	  'processing_hangup' => array(
+        'type' => 'int',
+        'default' => 0,
+      ),
       'check_machine' => array(
         'type' => 'int',
         'default' => 0,
@@ -308,4 +312,18 @@ function voipcall_update_6102() {
  */
 function voipcall_update_6103() {
   db_change_field('voipcall', 'script', 'script', array('type' => 'text', 'size' => 'big'));
+}
+
+/**
+ * Add processing_hangup flag
+ * TODO: Do we need to use 7xxx instead?
+ */
+function voipcall_update_6104() {
+  db_add_field('voipcall', 'processing_hangup',
+    array(
+      'type' => 'int',
+      'default' => 0,
+    )
+  );
+  return $ret;
 }

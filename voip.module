@@ -142,8 +142,10 @@ function voip_text_handler($text_content, $origin, $destination, $time, $network
  */
 function voip_sms_incoming($op, $number, $message, $options) {
   if ($op == 'process') {
-    $msg = "in voipcall_sms_incoming() with number: $number and message: $message ";
-    watchdog('voipcall', $msg);
+    if (voip_debug()) {
+      $msg = "in voipcall_sms_incoming() with number: $number and message: $message ";
+      watchdog('voipcall', $msg);
+    }
     voip_text_handler($message, $number, '', REQUEST_TIME);
   }
 }
@@ -270,4 +272,12 @@ function voip_voip_getvoices($language , $gender, $is_local, $voice_provider) {
   $voices['log'] = $voice;
  
   return $voices;
+}
+
+/**
+ * Returns state of debug option
+ * To enable debugging set voip_debug variable to TRUE
+ */
+function voip_debug() {
+  return variable_get('voip_debug', FALSE);
 }

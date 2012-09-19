@@ -33,10 +33,11 @@
  * @return void
  */
 function _voipplivo_call_handler($plivo_action, $cid = NULL) {
-
-  $msg = "in voipplivo_call_handler() with plivo_action: $plivo_action, cid: $cid, and _REQUEST: " . print_r($_REQUEST, TRUE);
-  $vars = array();
-  watchdog('voipplivo', $msg, $vars, WATCHDOG_INFO);
+  if (voip_debug()) {
+    $msg = "in voipplivo_call_handler() with plivo_action: $plivo_action, cid: $cid, and _REQUEST: " . print_r($_REQUEST, TRUE);
+    $vars = array();
+    watchdog('voipplivo', $msg, $vars, WATCHDOG_INFO);
+  }
 
   // validate $_REQUEST to avoid hack attempts
   if (!_voipplivo_validate_request()) {
@@ -71,50 +72,33 @@ function _voipplivo_call_handler($plivo_action, $cid = NULL) {
   /*if($_REQUEST['HangupCause'] == 'NORMAL_CLEARING') {
    return;
    }*/
-  if (!$cid) {
-    $voip_session = VoipSession::getSessionByNumber($from, $to);
-    //watchdog('voipplivo', "Session without cid, from: $from, to: $to, url:$plivo_action and SESSION: " . print_r($voip_session, TRUE));
-    if ($voip_session) {
-      $cid = $voip_session->getCid();
-      // load the variables already associated with the call, if any
-      $call = VoipCall::load($cid);
-      //watchdog('voipplivo', "Session Loaded cid: $cid call url:$plivo_action " . print_r($call, TRUE));
+  if (($plivo_action == 'process_hangup') && (!$cid)) {
+    $call_id = $_REQUEST['CallSid'];
+    $cid = VoipCall::getCidFromCallId($call_id);
+  }
 
-      $voip_session->resetTimer();
-      $voip_session->save();
-    }
-    else {
-      $call = new VoipCall();
-      $voip_session = new VoipSession();
-      $voip_session->setOriginNumber($from);
-      $voip_session->setDestinationNumber($to);
-      $voip_session->save();
-    }
+  if ($cid) {
+    $voip_session = VoipSession::getSessionByCid($cid);
   }
   else {
-    $voip_session = VoipSession::getSessionByCid($cid);
-    //watchdog('voipplivo', "Session with cid $cid from: $from, to: $to, url:$plivo_action and SESSION: " . print_r($voip_session, TRUE));
-
+    $voip_session = VoipSession::getSessionByNumber($from, $to);
     if ($voip_session) {
-      $voip_session->resetTimer();
-      $voip_session->save();
+      $cid = $voip_session->getCid();
     }
-    else if ($from && $to && $plivo_action != 'process_hangup') {
-      $voip_session = VoipSession::getSessionByNumber($from, $to);
-      if ($voip_session) {
-        $cid = $voip_session->getCid();
-        // load the variables already associated with the call, if any
-        $call = VoipCall::load($cid);
-        $voip_session->resetTimer();
-        $voip_session->save();
-      }
-      else {
-        $voip_session = new VoipSession();
-        $voip_session->setOriginNumber($from);
-        $voip_session->setDestinationNumber($to);
-        $voip_session->save();
-      }
-    }
+  }
+  if (!$voip_session) {
+    $voip_session = new VoipSession();
+    $voip_session->setOriginNumber($from);
+    $voip_session->setDestinationNumber($to);
+  }
+
+  // load the already existing call object, if any
+  if ($cid) {
+    $call = VoipCall::load($cid);
+  }
+  else {
+    //watchdog('debug', '1 : new call object');
+    $call = new VoipCall();
   }
 
   // handle incoming call and text requests
@@ -130,12 +114,10 @@ function _voipplivo_call_handler($plivo_action, $cid = NULL) {
     $call->setAnsweredBy(VoipCall::ANSWERED_DRUPAL);
     $call->setCallStatus(VoipCall::RINGING);
     $call->setStartTime(REQUEST_TIME);
+	$call->setCallerNumber($from);
+    $call->setDestNumber($to);
     $call->setCurrentChannel($channel);
     $call->setCurrentNetwork($network);
-    // save the call
-    $call->save();
-    // get the cid of the call
-    $cid = $call->getCid();
   }
   /*else if ($plivo_action == 'process_inbound_text') {
    $call_sid = $_REQUEST['SmsSid']; // unique identifier of the text, 34 char
@@ -185,10 +167,13 @@ function _voipplivo_call_handler($plivo_action, $cid = NULL) {
   global $user;
   $stored_user = $user;
   $call->loadGlobalUser();
-  watchdog('voipplivo', 'Logged user %uid in.', array('%uid' => $user->uid));
+  if (voip_debug()) {
+    watchdog('voipplivo', 'Logged user %uid in.', array('%uid' => $user->uid));
+  }
 
   //Left because offline_text
   if (in_array($channel, array('offline_text', 'text'))) {
+    $call = $call->save();
     //Set text-related variables in the call object
     $call->setTextVariables($_REQUEST['Body'], $_REQUEST['From'], $_REQUEST['To'], $network);
   }
@@ -243,6 +228,9 @@ function _voipplivo_call_handler($plivo_action, $cid = NULL) {
   watchdog('voipplivo', 'Check if Plivo statuses are same as Twilio ' . print_r($plivo_call_status, true));
   $call = voipplivo_update_call_status($call, $plivo_call_status);
   // }
+  
+  // save the call and initialize its script before setting internal variables
+  $call->save();
 
   // update script variables with call location, if available
   /* if(isset($_REQUEST['FromCity'])){
@@ -356,6 +344,24 @@ function _voipplivo_call_handler($plivo_action, $cid = NULL) {
 
   // update the voipcall with the new values
   $call = $call->save();
+  
+  // update the call session object
+  $cid = $call->getCid();
+  if (!$voip_session->getCid()) {
+    $voip_session->setCid($cid);
+  }
+  $voip_session->resetTimer();
+  $voip_session->save();
+
+  // get ready to process the call script
+
+  // load global $user based on call user
+  global $user;
+  $stored_user = $user;
+  $call->loadGlobalUser();
+  if (voip_debug()) {
+    watchdog('voiptwilio', 'Logged user %uid in.', array('%uid' => $user->uid));
+  }
 
   /*if ($plivo_action == 'process_inbound_text') {
    $script = $call->getScript();
@@ -376,7 +382,9 @@ function _voipplivo_call_handler($plivo_action, $cid = NULL) {
   // Process shouldn't go further, so just for good practice.
   if(! empty($stored_user)) {
     $user = $stored_user;
-    watchdog('voipplivo', 'Reverted to logged in user %uid', array('%uid' => $user->uid));
+    if (voip_debug()) {
+      watchdog('voipplivo', 'Reverted to logged in user %uid', array('%uid' => $user->uid));
+    }
   }
 
   return; // NOTE: this function MUST NOT return any value.  If it does, the
@@ -391,8 +399,10 @@ function _voipplivo_call_handler($plivo_action, $cid = NULL) {
  * @return boolean.  TRUE on success or FALSE on failure.  Check voip_error() for processing failure.
  */
 function _voipplivo_script_handler($call) {
-  $msg = 'Entering script_handler with voipcall: ' . print_r($call, true);
-  watchdog('voipplivo', $msg, array(), WATCHDOG_INFO);
+  if (voip_debug()) {
+    $msg = 'Entering script_handler with voipcall: ' . print_r($call, TRUE);
+    watchdog('voipplivo', $msg, array(), WATCHDOG_INFO);
+  }
 
   $rc = TRUE;
 
@@ -400,8 +410,9 @@ function _voipplivo_script_handler($call) {
   $script = $call->getScript();
 
   // check if call is in a hangup state
-  $hangup = $call->isHangup();
-  if ($hangup) {
+  $is_hangup = $call->isHangup();
+  $processing_hangup = $call->getProcessingHangup();
+  if ($is_hangup && !$processing_hangup) {
     $hangup_script_name = $call->getHangupScriptName();
     // Stop processing if no hangup script defined
     if (!$hangup_script_name) {
@@ -415,6 +426,11 @@ function _voipplivo_script_handler($call) {
         $params = array();
         $call->report_error('voipplivo', $msg, $params);
         return FALSE;
+      }
+	  else {
+        // make sure the call does not reload the hangup script once again
+        $call->setProcessingHangup(TRUE);
+        $call->setCallStatus(VoipCall::IN_PROGRESS);
       }
     }
   }
@@ -434,13 +450,17 @@ function _voipplivo_script_handler($call) {
         $script->runReturn();
         $processing = TRUE;
       }
-      else if ($call->getCurrentChannel() != 'text') {
-        // for voice channel send a final hangup request
-        $response .= '<Hangup/>';
-        $msg = 'Script @name ended without a "hangup" command.';
-        $params = array('@name' => $script->getName());
-        watchdog('voipplivo', $msg, $params, WATCHDOG_WARNING);
-        $call->setHangupReason(VoipCall::HANGUP_SCRIPT_END);
+      else {
+        if ($call->getCurrentChannel() != 'text') {
+          // for voice channel send a final hangup request
+          if (!$call->getProcessingHangup()) {
+            $response .= '<Hangup/>';
+            $msg = 'Script @name ended without a "hangup" command.';
+            $params = array('@name' => $script->getName());
+            watchdog('voipplivo', $msg, $params, WATCHDOG_WARNING);
+            $call->setHangupReason(VoipCall::HANGUP_SCRIPT_END);
+          }
+        }
       }
       //for text channel don't do anything
     }
@@ -896,7 +916,7 @@ function _voipplivo_send_response($response) {
   $output .= '</Response>';
 
   drupal_add_http_header('Content-Type', 'text/xml; charset=utf-8');
-  watchdog('response', 'Response ' . print_r($output, true));
+  //watchdog('response', 'Response ' . print_r($output, true));
   print $output;
 
   return TRUE;
@@ -1038,6 +1058,7 @@ function _voipplivo_process_dial_response($call, $request) {
  $text_status = VoipCall::TEXT_SENT;
  break;
  }
+ $call->setTextStatus($text_status);
  $script = $call->getScript();
  $script->setVar('send_text_status', $text_status);
  $call->setScript($script);

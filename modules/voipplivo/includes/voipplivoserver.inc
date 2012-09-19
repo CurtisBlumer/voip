@@ -54,7 +54,7 @@ class VoipPlivoServer extends VoipServer {
     $voipcall->setSource('drupal');
     $voipcall->setDirection(VoipCall::OUTBOUND);
 
-    // save the call in order to get generate an cid
+    // save the call in order to generate an cid
     $voipcall->save();
 
     // Instantiate a new Plivo Rest Client
@@ -105,7 +105,6 @@ class VoipPlivoServer extends VoipServer {
 
     $response = $client->call($vars);
 
-    watchdog('voipplivo', 'Plivo XML response = ' . print_r($response, TRUE));
     // update call based on response
     if ($response->IsError) {
       // differentiate between processing errors and higher-level errors
@@ -139,8 +138,6 @@ class VoipPlivoServer extends VoipServer {
        $voipcall->setCallId($call_id);
        $voipcall = voipplivo_update_call_status($voipcall, $plivo_call_status);*/
       $voipcall->save();
-
-      watchdog('voipplivo', 'new call: ' . print_r($voipcall, true));
     }
 
     return $rc;
@@ -153,20 +150,51 @@ class VoipPlivoServer extends VoipServer {
     $rc = FALSE;
     voip_error_reset();
 
-    //Determine from/to numbers
+    //determine from/to numbers
     if ($reply) {
       $to = $voipcall->getCallerNumber();
+	  $from = $voipcall->getDestNumber();
+      if (!isset($from)) {
+        $voipcall->report_error('voipplivo', "Attempt to send a text message reply with no caller number.");
+        return FALSE;
+      }
     }
     else {
       $to = $voipcall->getDestNumber();
+	  $from = ($voipcall->getCallerNumber())
+        ? $voipcall->getCallerNumber()
+        : variable_get('voipcall_cid_number', NULL);
     }
+	
+	// update call variables
+    $voipcall->setSource('drupal');
+    $voipcall->setDirection(VoipCall::OUTBOUND);
+    $voipcall->setCurrentChannel('text');
+    $voipcall->setCurrentNetwork('sms');
 
+    // save the call to generate a cid
+    $voipcall->save();
+
+    // (re)start the session associated with the call
+    $voip_session = VoipSession::getSessionByNumber($from, $to);
+    if ($voip_session) {
+      $voip_session->resetTimer();
+    }
+    else {
+      $voip_session = new VoipSession();
+      $voip_session->setOriginNumber($from);
+      $voip_session->setDestinationNumber($to);
+    }
+    $voip_session->setCid($voipcall->getCid());
+    $voip_session->save();
+
+    // send the sms
     if (voipscript_use_sms_framework()) {
-      //Use SMS Framework to send SMS message if user enabled this option
+      //use SMS Framework to send SMS message if user enabled this option
       voipscript_send_sms_framework($to, $text);
       return TRUE;
     }
-    //Else use VoIP Drupal:
+    //else use VoIP Drupal:
     //Plivo doesn't support SMS yet
     return FALSE;
   }
@@ -175,10 +203,11 @@ class VoipPlivoServer extends VoipServer {
    * Implementation of the VoipServer hangup() API method
    */
   function hangup($voipcall, $server_config = NULL) {
-    $id = $voipcall->getCallId();
-    $status = $voipcall->getCallStatus();
-    watchdog('voipplivo', "in hangup() with call id: $id and status: $status");
-
+    if (voip_debug()) {
+      $id = $voipcall->getCallId();
+      $status = $voipcall->getCallStatus();
+      watchdog('voipplivo', "in hangup() with call id: $id and status: $status");
+    }
     $rc = FALSE;
     voip_error_reset();
 

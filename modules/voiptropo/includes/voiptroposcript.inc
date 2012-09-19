@@ -6,7 +6,6 @@
  * Implementation of the VoipTropoScript class
  */
 
-
 class VoipTropoScript extends VoipScript {
 
   /**

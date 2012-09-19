@@ -33,10 +33,11 @@
  * @return void
  */
 function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
-
-  $msg = "in voiptwilio_call_handler() with twilio_action: $twilio_action, cid: $cid, and _REQUEST: " . print_r($_REQUEST, TRUE);
-  $vars = array();
-  watchdog('voiptwilio', $msg, $vars, WATCHDOG_INFO);
+  if (voip_debug()) {
+    $msg = "in voiptwilio_call_handler() with twilio_action: $twilio_action, cid: $cid, and _REQUEST: " . print_r($_REQUEST, TRUE);
+    $vars = array();
+    watchdog('voiptwilio', $msg, $vars, WATCHDOG_INFO);
+  }
   // validate $_REQUEST['AccountSid'] to avoid hack attempts
   $server = VoipServer::getServer('twilio');
   $server_config = $server->getConfig();
@@ -48,6 +49,8 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
     watchdog('voiptwilio', $msg, $params, WATCHDOG_WARNING);
     return FALSE; // TODO: should we return an error response to the server?
   }
+  
+  // determine channel, network, to and from attributes
   if ($twilio_action == 'process_inbound_text') {
     if (isset($_REQUEST['Channel'])) {
       $channel = $_REQUEST['Channel'];
@@ -67,51 +70,39 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
     $to = $_REQUEST['Called'];
   }
 
-  if (!$cid) {
+  // load session and cid based on request parameters
+
+  // 'process_hangup' for incoming calls does not come with a $cid
+  if (($twilio_action == 'process_hangup') && (!$cid)) {
+    $call_id = $_REQUEST['CallSid'];
+    $cid = VoipCall::getCidFromCallId($call_id);
+  }
+
+  if ($cid) {
+    $voip_session = VoipSession::getSessionByCid($cid);
+  }
+  else {
     $voip_session = VoipSession::getSessionByNumber($from, $to);
     if ($voip_session) {
       $cid = $voip_session->getCid();
-      // load the variables already associated with the call, if any
-      $call = VoipCall::load($cid);
-      $voip_session->resetTimer();
-      $voip_session->save();
-    }
-    else {
-      $call = new VoipCall();
-      $voip_session = new VoipSession();
-      $voip_session->setOriginNumber($from);
-      $voip_session->setDestinationNumber($to);
-      $voip_session->save();
     }
   }
+  if (!$voip_session) {
+    $voip_session = new VoipSession();
+    $voip_session->setOriginNumber($from);
+    $voip_session->setDestinationNumber($to);
+  }
+
+  // load the already existing call object, if any
+  if ($cid) {
+    $call = VoipCall::load($cid);
+  }
   else {
-    $voip_session = VoipSession::getSessionByCid($cid);
-    if ($voip_session) {
-      $voip_session->resetTimer();
-      $voip_session->save();
-    }
-    else if ($from && $to && $twilio_action != 'process_hangup') {
-      $voip_session = VoipSession::getSessionByNumber($from, $to);
-      if ($voip_session) {
-        $cid = $voip_session->getCid();
-        // load the variables already associated with the call, if any
-        $call = VoipCall::load($cid);
-        $voip_session->resetTimer();
-        $voip_session->save();
-      }
-      else {
-        $voip_session = new VoipSession();
-        $voip_session->setOriginNumber($from);
-        $voip_session->setDestinationNumber($to);
-        $voip_session->save();
-      }
-    }
+    $call = new VoipCall();
   }
 
   // handle incoming call and text requests
   if ($twilio_action == 'process_inbound_calls') {
-
-    $call = new VoipCall(); //TODO: Why was this restored?
     $call_sid = $_REQUEST['CallSid']; // unique identifier of the call, 34 char
     $call->setCallId($call_sid);
     $call->setSource('twilio');
@@ -122,13 +113,10 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
     $call->setAnsweredBy(VoipCall::ANSWERED_DRUPAL);
     $call->setCallStatus(VoipCall::RINGING);
     $call->setStartTime(REQUEST_TIME);
+	$call->setCallerNumber($from);
+    $call->setDestNumber($to);
     $call->setCurrentChannel($channel);
     $call->setCurrentNetwork($network);
-    // save the call
-    $call->save();
-
-    // get the cid of the call
-    $cid = $call->getCid();
   }
   else if ($twilio_action == 'process_inbound_text') {
     $call_sid = $_REQUEST['SmsSid']; // unique identifier of the text, 34 char
@@ -144,21 +132,9 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
     $call->setDestNumber($to);
     $call->setCurrentChannel($channel);
     $call->setCurrentNetwork($network);
-    $call->save();
   }
   else {
     // handle ongoing calls
-    // 'process_hangup' for incoming calls does not come with a $cid
-    if ($twilio_action == 'process_hangup') {
-      if (!$cid) {
-        $call_id = $_REQUEST['CallSid'];
-        $cid = VoipCall::getCidFromCallId($call_id);
-      }
-    }
-
-    // load the variables already associated with the call, if any
-    $call = VoipCall::load($cid);
-
     // handle first response to an outbound call
     if ($twilio_action == 'process_outbound_calls') {
       // store twilio call id for all outbound calls
@@ -173,24 +149,6 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
     }
   }
   
-  // load global $user based on call user
-  global $user;
-  $stored_user = $user;
-  $call->loadGlobalUser();
-  watchdog('voiptwilio', 'Logged user %uid in.', array('%uid' => $user->uid));
-
-  if (in_array($channel, array('offline_text', 'text'))) {
-    //Set text-related variables in the call object 
-    $call->setTextVariables($_REQUEST['Body'], $_REQUEST['From'], $_REQUEST['To'], $network);
-  }
-
-  // get the cid of the call
-  $cid = $call->getCid();
-  if ($voip_session && !$voip_session->getCid()) {
-    $voip_session->setCid($cid);
-    $voip_session->save();
-  }
-
   // update common call variables
   if (!$call->getCurrentChannel()) {
     $call->setCurrentChannel($channel);
@@ -222,8 +180,6 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
     }
   }
 
-  //watchdog('voiptwilio', "twilio status: $twilio_call_status, call status: " . $call->getCallStatus());
-
   // update call status
   // NOTE: sms callbacks do not have a call status associated with them
   // NOTE: when the user hangs up during a recording, Twilio sends the record 
@@ -241,6 +197,16 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
   }
   else {
     $call = voiptwilio_update_call_status($call, $twilio_call_status);
+  }
+  
+  // save the call and initialize its script before setting internal variables
+  $call->save();
+
+  // update script variables
+
+  // set text channel variables
+  if (in_array($channel, array('offline_text', 'text'))) {
+    $call->setTextVariables($_REQUEST['Body'], $_REQUEST['From'], $_REQUEST['To'], $network);
   }
 
   // update script variables with call location, if available
@@ -260,9 +226,6 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
   }
 
   $is_hangup = $call->isHangup();
-
-
-  //watchdog('voiptwilio', "twilio status: $twilio_call_status, updated call status: " . $call->getCallStatus() . ", is_hangup: $is_hangup");
 
   // process responses to requests previously-issued by the call script
   if (!$is_hangup) {
@@ -349,6 +312,25 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
 
   // update the voipcall with the new values
   $call = $call->save();
+  
+  // update the call session object
+  $cid = $call->getCid();
+  if (!$voip_session->getCid()) {
+    $voip_session->setCid($cid);
+  }
+  $voip_session->resetTimer();
+  $voip_session->save();
+
+  // get ready to process the call script
+
+  // load global $user based on call user
+  global $user;
+  $stored_user = $user;
+  $call->loadGlobalUser();
+  if (voip_debug()) {
+    watchdog('voiptwilio', 'Logged user %uid in.', array('%uid' => $user->uid));
+  }
+
 
   if ($twilio_action == 'process_inbound_text') {
     $script = $call->getScript();
@@ -369,7 +351,9 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
   // Process shouldn't go further, so just for good practice.
   if(! empty($stored_user)) {
     $user = $stored_user;
-    watchdog('voiptwilio', 'Reverted to logged in user %uid', array('%uid' => $user->uid));
+    if (voip_debug()) {
+      watchdog('voiptwilio', 'Reverted to logged in user %uid', array('%uid' => $user->uid));
+    }
   }
 
   return; // NOTE: this function MUST NOT return any value.  If it does, the
@@ -384,8 +368,10 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
  * @return boolean.  TRUE on success or FALSE on failure.  Check voip_error() for processing failure.
  */
 function _voiptwilio_script_handler($call) {
-  $msg = 'Entering script_handler with voipcall: ' . print_r($call, true);
-  watchdog('voiptwilio', $msg, array(), WATCHDOG_INFO);
+  if (voip_debug()) {
+    $msg = 'Entering script_handler with voipcall: ' . print_r($call, TRUE);
+    watchdog('voiptwilio', $msg, array(), WATCHDOG_INFO);
+  }
 
   $rc = TRUE;
 
@@ -393,8 +379,9 @@ function _voiptwilio_script_handler($call) {
   $script = $call->getScript();
 
   // check if call is in a hangup state
-  $hangup = $call->isHangup();
-  if ($hangup) {
+  $is_hangup = $call->isHangup();
+  $processing_hangup = $call->getProcessingHangup();
+  if ($is_hangup && !$processing_hangup) {
     $hangup_script_name = $call->getHangupScriptName();
     // Stop processing if no hangup script defined
     if (!$hangup_script_name) {
@@ -408,6 +395,11 @@ function _voiptwilio_script_handler($call) {
         $params = array();
         $call->report_error('voiptwilio', $msg, $params);
         return FALSE;
+      }
+	  else {
+        // make sure the call does not reload the hangup script once again
+        $call->setProcessingHangup(TRUE);
+        $call->setCallStatus(VoipCall::IN_PROGRESS);
       }
     }
   }
@@ -427,13 +419,17 @@ function _voiptwilio_script_handler($call) {
         $script->runReturn();
         $processing = TRUE;
       }
-      else if ($call->getCurrentChannel() != 'text') {
-        // for voice channel send a final hangup request 
-        $response .= '<Hangup/>';
-        $msg = 'Script @name ended without a "hangup" command.';
-        $params = array('@name' => $script->getName());
-        watchdog('voiptwilio', $msg, $params, WATCHDOG_WARNING);
-        $call->setHangupReason(VoipCall::HANGUP_SCRIPT_END);
+      else {
+        if ($call->getCurrentChannel() != 'text') {
+          // for voice channel send a final hangup request
+          if (!$call->getProcessingHangup()) {
+            $response .= '<Hangup/>';
+            $msg = 'Script @name ended without a "hangup" command.';
+            $params = array('@name' => $script->getName());
+            watchdog('voiptwilio', $msg, $params, WATCHDOG_WARNING);
+            $call->setHangupReason(VoipCall::HANGUP_SCRIPT_END);
+          }
+        }
       }
       //for text channel don't do anything
     }
@@ -1067,6 +1063,8 @@ function _voiptwilio_process_sms_response($call, $request) {
       $text_status = VoipCall::TEXT_SENT;
       break;
   }
+  $call->setTextStatus($text_status);
+//TODO: deprecate send_text_status and replace it by %text_status, which is already updated by voicall together w/ other script variables
   $script = $call->getScript();
   $script->setVar('send_text_status', $text_status);
   $call->setScript($script);

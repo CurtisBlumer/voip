@@ -49,6 +49,7 @@ class VoipCall {
   const BUSY = 'busy';
   const INVALID = 'invalid_number';
   const CANCELED = 'canceled'; // canceled by the system while queued or ringing
+  const REJECTED = 'rejected';
 
   /**
    * 'direction' field values
@@ -270,7 +271,7 @@ class VoipCall {
   }
 
   public function setDestNumber($number) {
-    $this->call_data->dest_number = $number;
+    $this->call_data->dest_number = voipcall_normalize_phone_number($number);
   }
 
   public function getDestName() {
@@ -286,7 +287,7 @@ class VoipCall {
   }
 
   public function setCallerNumber($number) {
-    $this->call_data->caller_number = $number;
+    $this->call_data->caller_number = voipcall_normalize_phone_number($number);
   }
 
   public function getCallerName() {
@@ -352,6 +353,14 @@ class VoipCall {
       }
     }
     return $description;
+  }
+  
+  public function getProcessingHangup() {
+    return $this->call_data->processing_hangup;
+  }
+
+  public function setProcessingHangup($processing_hangup) {
+    $this->call_data->processing_hangup = $processing_hangup;
   }
 
   public function getAnsweredBy() {
@@ -588,7 +597,6 @@ class VoipCall {
     // if this is a new call data being created
     if (!isset($details->cid) || is_null($details->cid)) {
       // @TODO Why does this get called so many times when a call goes out?
-      // @TODO Why doesn't this save new data every time a call blast goes out, e.g. unchecking blast sent ?
 
       $data = new stdClass();
       $update = NULL;
@@ -597,6 +605,11 @@ class VoipCall {
       // initialize the 'Call Id' field
       if (!isset($details->call_id)) {
         $data->call_id = NULL;
+      }
+	  
+	  // initialize 'Caller Number' field
+      if (!isset($details->caller_number)) {
+        $data->caller_number = variable_get('voipcall_cid_number', NULL);
       }
 
       // initialize 'Call Status' field
@@ -665,10 +678,20 @@ class VoipCall {
       if (!isset($details->hangup_reason)) {
         $data->hangup_reason = NULL;
       }
+	  
+	  // initialize 'Processing Hangup'' field
+      if (!isset($details->processing_hangup)) {
+        $data->processing_hangup = FALSE;
+      }
 
       // initialize 'Check Machine' field
       if (!isset($details->check_machine)) {
         $data->check_machine = FALSE;
+      }
+	  
+	  // initialize 'Dest name' field
+      if (!isset($details->dest_name)) {
+        $data->dest_name = NULL;
       }
 
     }
@@ -800,6 +823,11 @@ class VoipCall {
     if (isset($new_hangup_reason)) {
       $data->hangup_reason =  $new_hangup_reason;
     }
+	
+	$processing_hangup = isset($details->processing_hangup) ? $details->processing_hangup : NULL;
+    if (isset($processing_hangup)) {
+      $data->processing_hangup = $processing_hangup;
+    }
 
     $new_check = isset($details->check_machine) ? $details->check_machine : NULL;
     if (isset($new_check)) {
@@ -840,6 +868,8 @@ class VoipCall {
     $call_data = $this->call_data;
 
     // add call variables to script variables
+	$script->setVar('cid',
+      $call_data->cid);
     // Note: 'uid' should only be accessed from global $user
     // $script->setVar('uid', $call_data->uid);
 
@@ -884,6 +914,15 @@ class VoipCall {
 
     $script->setVar('hangup_reason',
         $call_data->hangup_reason);
+		
+	$script->setVar('processing_hangup',
+      $call_data->processing_hangup);
+	
+    $script->setVar('current_channel',
+      $call_data->current_channel);
+
+    $script->setVar('current_network',
+      $call_data->current_network);	
 
     $script->setVar('check_machine',
         $call_data->check_machine);
