@@ -1451,17 +1451,17 @@ function _voiptropo_handle_new_calls($tropo_action, $session) {
   // load the already existing call object, if any
   if ($cid) {
     $call = VoipCall::load($cid);
+	// load global $user based on call user (only if we have $call object)
+    global $user;
+    $call->loadGlobalUser();
+	if (voip_debug()) {
+      watchdog('voiptropo', 'Logged user %uid in.', array('%uid' => $user->uid));
+    }
   }
   else {
     $call = new VoipCall();
   }
-
-  // load global $user based on call user
-  global $user;
-  $call->loadGlobalUser();
-
-  // set the call object
-
+  
   // handle incoming call requests (both text and voice)
   if ($tropo_action == 'process_inbound_calls') {
     $call_id = $session->getId();
@@ -1660,7 +1660,7 @@ function _voiptropo_handle_ongoing_calls($result, $tropo_action, $cid, $event_ty
 
   // load global $user based on call user
   global $user;
-  $stored_user = $user;
+  //$stored_user = $user;
   $call->loadGlobalUser();
   if (voip_debug()) {
     watchdog('voiptropo', 'Logged user %uid in.', array('%uid' => $user->uid));
