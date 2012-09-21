@@ -88,6 +88,7 @@
     $rc = _voiptropo_script_handler($call, $tropo);
 
     // add common event triggers
+	$channel = $call->getCallChannel();
     if ($tropo_action != 'process_callstatus' && $channel != 'text') {
       $cid = $call->getCid();
       $response_url = $menu_path . '/process_callstatus/' . $cid . '/error';
