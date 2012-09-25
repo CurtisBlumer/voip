@@ -49,29 +49,39 @@ class VoipPlivoServer extends VoipServer {
     $rest_api_url = $server_config['voipplivo_restapi_url'];
     $account_sid = $server_config['voipplivo_account_sid'];
     $auth_token = $server_config['voipplivo_auth_token'];
+	
+	$caller_number = ($voipcall->getCallerNumber())
+      ? $voipcall->getCallerNumber()
+      : variable_get('voipcall_cid_number', NULL);
+    $dest_number = $voipcall->getDestNumber();
 
-    // Update call variables
-    $voipcall->setSource('drupal');
-    $voipcall->setDirection(VoipCall::OUTBOUND);
-
-    // save the call in order to generate an cid
-    $voipcall->save();
-
-    // Instantiate a new Plivo Rest Client
-    $client = new PlivoRestClient($rest_api_url, $account_sid, $auth_token, $api_version);
+   // (re)start the session associated with the call
+    $voip_session = VoipSession::getSessionByNumber($caller_number, $dest_number);
+    if ($voip_session) {
+      $voip_session->resetTimer();
+	   //we must preserve cid
+	  $cid = $voip_session->getCid();
+	  //load existing call
+	  $voipcall = VoipCall::load($cid);
+    }
+    else {
+      $voip_session = new VoipSession();
+      $voip_session->setOriginNumber($caller_number);
+      $voip_session->setDestinationNumber($dest_number);
+	  
+	  // Update call variables
+      $voipcall->setSource('drupal');
+      $voipcall->setDirection(VoipCall::OUTBOUND);
+	  $voipcall->save();
+      $cid = $voipcall->getCid();
+	  $voip_session->setCid($cid);
+    }
+    $voip_session->save();
 
     # Define Channel Variable - http://wiki.freeswitch.org/wiki/Channel_Variables
     $extra_dial_string = "bridge_early_media=true,hangup_after_bridge=true";
 
-    // Initiate a new outbound call by POST'ing to the Calls resource
-    //$plivo_path = "/$api_version/Accounts/$account_sid/Calls";
-    $caller_number = ($voipcall->getCallerNumber())
-                       ? $voipcall->getCallerNumber()
-                       : variable_get('voipcall_cid_number', NULL);
-    $dest_number = $voipcall->getDestNumber();
-
     $menu_path = 'voip/plivo/callhandler';
-    $cid = $voipcall->getCid();
     $response_url = $menu_path . '/process_outbound_calls/' . $cid;
     $call_handler_url = url($response_url, array('absolute' => TRUE));
     $response_url = $menu_path . '/process_hangup/' . $cid;
@@ -83,26 +93,28 @@ class VoipPlivoServer extends VoipServer {
     $gateway_retries = $server_config['voipplivo_call_gateway_retries'];
 
     $vars = array(
-      'From' => $caller_number, # Caller Id
-      'To' => $dest_number, # User Number to Call
-      'Gateways' => $gateways, # Gateway string to try dialing our separated by comma. First in list will be tried first
-      'GatewayCodecs' => $gateway_codecs, # Codec string as needed by FS for each gateway separated by comma
-      'GatewayTimeouts' => $gateway_timeouts, # Seconds to timeout in string for each gateway separated by comma
-      'GatewayRetries' => $gateway_retries, # Retry String for Gateways separated by comma, on how many times each gateway should be retried
+      'From' => $caller_number,
+      # Caller Id
+      'To' => $dest_number,
+      # User Number to Call
+      'Gateways' => $gateways,
+      # Gateway string to try dialing our separated by comma. First in list will be tried first
+      'GatewayCodecs' => $gateway_codecs,
+      # Codec string as needed by FS for each gateway separated by comma
+      'GatewayTimeouts' => $gateway_timeouts,
+      # Seconds to timeout in string for each gateway separated by comma
+      'GatewayRetries' => $gateway_retries,
+      # Retry String for Gateways separated by comma, on how many times each gateway should be retried
       'ExtraDialString' => $extra_dial_string,
       'AnswerUrl' => $call_handler_url,
-      //@todo Check that hangup_url works
+      //TODO: Check that hangup_url works
       'HangupUrl' => $status_callback_url,
-      //@todo Whats the purpose of ringing URLs? Is it optional?
+      //TODO: Whats the purpose of ringing URLs? Is it optional?
       //'RingUrl' => "http://127.0.0.1:5000/ringing/"
     );
 
-    // Handle answering machine options
-    /* if($voipcall->getCheckMachine() == TRUE) {
-     // @todo  Is there IfMachine variable in Plivo?
-     //$vars['IfMachine'] = 'Continue';
-     }*/
-
+    // Instantiate a new Plivo Rest Client
+    $client = new PlivoRestClient($rest_api_url, $account_sid, $auth_token, $api_version);
     $response = $client->call($vars);
 
     // update call based on response
@@ -121,7 +133,7 @@ class VoipPlivoServer extends VoipServer {
           $msg = "Processing failure. Please contact your system's administrator. Plivo error @plivo_code: @plivo_msg";
           $params = array(
             '@plivo_code' => $plivo_error_code,
-            '@plivo_msg' => $plivo_error_msg,
+            '@plivo_msg' => $plivo_error_msg
           );
           $voipcall->report_error('voipplivo', $msg, $params);
           break;
@@ -130,14 +142,6 @@ class VoipPlivoServer extends VoipServer {
     }
     else {
       $rc = TRUE;
-      // get the new id and status associated with the call
-      //@todo There is no responseXML
-      /*$xml = $response->ResponseXml;
-       $call_id = (string)$xml->Call->Sid;
-       $plivo_call_status = (string)$xml->Call->Status;
-       $voipcall->setCallId($call_id);
-       $voipcall = voipplivo_update_call_status($voipcall, $plivo_call_status);*/
-      $voipcall->save();
     }
 
     return $rc;
@@ -150,10 +154,10 @@ class VoipPlivoServer extends VoipServer {
     $rc = FALSE;
     voip_error_reset();
 
-    //determine from/to numbers
+    // determine from/to numbers
     if ($reply) {
       $to = $voipcall->getCallerNumber();
-	  $from = $voipcall->getDestNumber();
+      $from = $voipcall->getDestNumber();
       if (!isset($from)) {
         $voipcall->report_error('voipplivo', "Attempt to send a text message reply with no caller number.");
         return FALSE;
@@ -161,41 +165,44 @@ class VoipPlivoServer extends VoipServer {
     }
     else {
       $to = $voipcall->getDestNumber();
-	  $from = ($voipcall->getCallerNumber())
+      $from = ($voipcall->getCallerNumber())
         ? $voipcall->getCallerNumber()
         : variable_get('voipcall_cid_number', NULL);
     }
-	
-	// update call variables
-    $voipcall->setSource('drupal');
-    $voipcall->setDirection(VoipCall::OUTBOUND);
-    $voipcall->setCurrentChannel('text');
-    $voipcall->setCurrentNetwork('sms');
-
-    // save the call to generate a cid
-    $voipcall->save();
 
     // (re)start the session associated with the call
     $voip_session = VoipSession::getSessionByNumber($from, $to);
     if ($voip_session) {
       $voip_session->resetTimer();
+	  $cid = $voip_session->getCid();
+	  //load existing call
+	  $voipcall = VoipCall::load($cid);
     }
     else {
       $voip_session = new VoipSession();
       $voip_session->setOriginNumber($from);
       $voip_session->setDestinationNumber($to);
+	  
+	  // update call variables
+      $voipcall->setSource('drupal');
+      $voipcall->setDirection(VoipCall::OUTBOUND);
+      $voipcall->setCurrentChannel('text');
+      $voipcall->setCurrentNetwork('sms');
+	  $voipcall->save();
+      $cid = $voipcall->getCid();
+	  $voip_session->setCid($cid);
     }
-    $voip_session->setCid($voipcall->getCid());
+
     $voip_session->save();
 
     // send the sms
     if (voipscript_use_sms_framework()) {
-      //use SMS Framework to send SMS message if user enabled this option
+      // use SMS Framework to send SMS message if user enabled this option
       voipscript_send_sms_framework($to, $text);
       return TRUE;
     }
-    //else use VoIP Drupal:
-    //Plivo doesn't support SMS yet
+    // else use VoIP Drupal:
+    // Plivo doesn't support SMS yet
     return FALSE;
   }
 

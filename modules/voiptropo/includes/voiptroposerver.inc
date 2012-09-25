@@ -59,7 +59,6 @@ class VoipTropoServer extends VoipServer {
    * Implementation of the VoipServer dial() API method
    */
   function dial($voipcall, $server_config = NULL) {
-
     voip_error_reset();
 
     if (!$server_config) {
@@ -77,7 +76,8 @@ class VoipTropoServer extends VoipServer {
       $voip_session->resetTimer();
 	  //we must preserve cid
 	  $cid = $voip_session->getCid();
-	  //no need to save the call since we are retrieving existing cid
+	  //load existing call
+	  $voipcall = VoipCall::load($cid);
     }
     else {
       $voip_session = new VoipSession();
@@ -157,7 +157,8 @@ class VoipTropoServer extends VoipServer {
       $voip_session->resetTimer();
 	  //we must preserve cid
 	  $cid = $voip_session->getCid();
-	  //no need to save the call since we are retrieving existing cid
+	  //load existing call
+	  $voipcall = VoipCall::load($cid);
     }
     else {
       $voip_session = new VoipSession();
