@@ -9,9 +9,10 @@
 //-----------------------------------------------------------------------------
 // Include files
 //-----------------------------------------------------------------------------
-foreach (array('voiptwilio.inc', 'voiptwilioserver.inc') as $file) {
-  require_once(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . $file);
-}
+
+module_load_include('inc', 'voiptwilio', 'includes/voiptwilio');
+module_load_include('inc', 'voiptwilio', 'includes/voiptwilioserver');
+module_load_include('php', 'voiptwilio', 'includes/twilio');
 
 
 //-----------------------------------------------------------------------------
