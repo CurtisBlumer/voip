@@ -74,7 +74,7 @@ Drupal configuration:
 
 3. Enable users to make outgoing (outbound) calls from your site
 
-  - Go to admin/user/permissions
+  - Go to admin/people/permissions
 
   - Find the "voip module" permissions
 
