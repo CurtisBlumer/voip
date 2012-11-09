@@ -42,7 +42,7 @@ function voipscriptsamples_voipscript_get_script_names() {
  */
 function _voipscriptsamples_load_sample_scripts($script_name) {
   $script = NULL;
-  
+
   if ($script_name == 'voipscript_callback') {
     $script = new VoipScript('voipscript_callback');
     // user script to be executed on hangup
@@ -53,13 +53,13 @@ function _voipscriptsamples_load_sample_scripts($script_name) {
     $script->addBeep();
     $script->addHangup();
   }
-  
+
   // callback script to be executed upon hangup
   if ($script_name == 'voipscript_exec_callback_script') {
     $script = new VoipScript('voipscript_exec_callback_script');
     $script->addSet('voipscript_callback_result', '^_voipscript_exec_callback(%caller_number, %callback_script_name)');
   }
-  
+
   if ($script_name == 'voipscript_dial_test') {
     $script = _voipscriptsamples_get_dial_test_script();
   }
@@ -118,7 +118,7 @@ function _voipscriptsamples_load_sample_scripts($script_name) {
     $script->addLabel('record');
     $script->addGosub('voipscript_record');
     $script->addGoto('hang up');
-	
+
 	$script->addLabel('callback');
     $script->addGosub('voipscript_callback');
     $script->addGoto('hang up');
@@ -265,7 +265,7 @@ function _voipscriptsamples_get_dial_test_script() {
   $script->addLabel('accept menu');
   $prompt = t("To accept this number, press 1.  To type it once again, press 2. To hangup, press the pound key.");
   $timeout = 5;
-  $end_key = '';
+  $end_key = '*';  //Some servers don't allow empty end_key
   $num_digits = 1;
   $script->addGetInput($prompt, $num_digits, $end_key, $timeout);
 
@@ -318,7 +318,7 @@ function _voipscriptsamples_get_join_conference_script() {
   $script->addLabel('accept menu');
   $prompt = t("To accept this number, press 1.  To type it once again, press 2. To hangup, press the pound key.");
   $timeout = 5;
-  $end_key = '';
+  $end_key = '*';  //Some servers don't allow empty end_key
   $num_digits = 1;
   $script->addGetInput($prompt, $num_digits, $end_key, $timeout);
 
@@ -371,7 +371,7 @@ function _voipscriptsamples_get_record_script() {
   $script->addLabel('accept menu');
   $prompt = t("To accept this recording, press 1.  To record it once again, press 2. To hangup, press the pound key.");
   $timeout = 5;
-  $end_key = '';
+  $end_key = '*';  //Some servers don't allow empty end_key
   $num_digits = 1;
   $script->addGetInput($prompt, $num_digits, $end_key, $timeout);
 
@@ -438,7 +438,7 @@ function _voipscriptsamples_get_send_sms() {
   $script->addLabel('accept menu');
   $prompt = t("To accept this number, press 1.  To type it once again, press 2. To hangup, press the pound key.");
   $timeout = 5;
-  $end_key = '';
+  $end_key = '*';  //Some servers don't allow empty end_key
   $num_digits = 1;
   $script->addGetInput($prompt, $num_digits, $end_key, $timeout);
 

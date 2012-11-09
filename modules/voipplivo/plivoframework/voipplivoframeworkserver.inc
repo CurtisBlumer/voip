@@ -4,27 +4,29 @@
 
 /**
  * @file
- * Implementation of the VoipPlivoServer class
+ * Implementation of the voipplivoframeworkServer class
+ */
+
+
+/**
+ * File dependencies
  */
 
 module_load_include('inc', 'voip', 'includes/voipserver');
-module_load_include('inc', 'voipcall', 'voipcall');
-
-
 /**
  * Class definitions
  */
 
-class VoipPlivoServer extends VoipServer {
+class VoipPlivoFrameworkServer extends VoipServer {
 
   /*
    * Constructors
    */
 
   function __construct() {
-    $id = 'plivo';
-    $name = 'Plivo';
-    $config_form = 'voipplivo_admin_form';
+    $id = 'plivoframework';
+    $name = 'Plivo Framework';
+    $config_form = 'voipplivoframework_admin_form';
     parent::__construct($id, $name, $config_form);
   }
 
@@ -46,10 +48,10 @@ class VoipPlivoServer extends VoipServer {
 
     // Plivo configuration
     $api_version = 'v0.1';
-    $rest_api_url = $server_config['voipplivo_restapi_url'];
-    $account_sid = $server_config['voipplivo_account_sid'];
-    $auth_token = $server_config['voipplivo_auth_token'];
-	
+    $rest_api_url = $server_config['voipplivoframework_restapi_url'];
+    $account_sid = $server_config['voipplivoframework_account_sid'];
+    $auth_token = $server_config['voipplivoframework_auth_token'];
+
 	$caller_number = ($voipcall->getCallerNumber())
       ? $voipcall->getCallerNumber()
       : variable_get('voipcall_cid_number', NULL);
@@ -68,7 +70,7 @@ class VoipPlivoServer extends VoipServer {
       $voip_session = new VoipSession();
       $voip_session->setOriginNumber($caller_number);
       $voip_session->setDestinationNumber($dest_number);
-	  
+
 	  // Update call variables
       $voipcall->setSource('drupal');
       $voipcall->setDirection(VoipCall::OUTBOUND);
@@ -81,16 +83,16 @@ class VoipPlivoServer extends VoipServer {
     # Define Channel Variable - http://wiki.freeswitch.org/wiki/Channel_Variables
     $extra_dial_string = "bridge_early_media=true,hangup_after_bridge=true";
 
-    $menu_path = 'voip/plivo/callhandler';
+    $menu_path = 'voip/plivoframework/callhandler';
     $response_url = $menu_path . '/process_outbound_calls/' . $cid;
     $call_handler_url = url($response_url, array('absolute' => TRUE));
     $response_url = $menu_path . '/process_hangup/' . $cid;
     $status_callback_url = url($response_url, array('absolute' => TRUE));
 
-    $gateways = $server_config['voipplivo_call_gateways'];
-    $gateway_codecs = $server_config['voipplivo_call_gateway_codec'];
-    $gateway_timeouts = $server_config['voipplivo_call_gateway_timeouts'];
-    $gateway_retries = $server_config['voipplivo_call_gateway_retries'];
+    $gateways = $server_config['voipplivoframework_call_gateways'];
+    $gateway_codecs = $server_config['voipplivoframework_call_gateway_codec'];
+    $gateway_timeouts = $server_config['voipplivoframework_call_gateway_timeouts'];
+    $gateway_retries = $server_config['voipplivoframework_call_gateway_retries'];
 
     $vars = array(
       'From' => $caller_number,
@@ -135,7 +137,7 @@ class VoipPlivoServer extends VoipServer {
             '@plivo_code' => $plivo_error_code,
             '@plivo_msg' => $plivo_error_msg
           );
-          $voipcall->report_error('voipplivo', $msg, $params);
+          $voipcall->report_error('voipplivoframework', $msg, $params);
           break;
       }
       $rc = FALSE;
@@ -159,7 +161,7 @@ class VoipPlivoServer extends VoipServer {
       $to = $voipcall->getCallerNumber();
       $from = $voipcall->getDestNumber();
       if (!isset($from)) {
-        $voipcall->report_error('voipplivo', "Attempt to send a text message reply with no caller number.");
+        $voipcall->report_error('voipplivoframework', "Attempt to send a text message reply with no caller number.");
         return FALSE;
       }
     }
@@ -174,23 +176,20 @@ class VoipPlivoServer extends VoipServer {
     $voip_session = VoipSession::getSessionByNumber($from, $to);
     if ($voip_session) {
       $voip_session->resetTimer();
-	  $cid = $voip_session->getCid();
-	  //load existing call
-	  $voipcall = VoipCall::load($cid);
     }
     else {
       $voip_session = new VoipSession();
       $voip_session->setOriginNumber($from);
       $voip_session->setDestinationNumber($to);
-	  
+
 	  // update call variables
       $voipcall->setSource('drupal');
       $voipcall->setDirection(VoipCall::OUTBOUND);
       $voipcall->setCurrentChannel('text');
       $voipcall->setCurrentNetwork('sms');
-	  $voipcall->save();
+	    $voipcall->save();
       $cid = $voipcall->getCid();
-	  $voip_session->setCid($cid);
+	    $voip_session->setCid($cid);
     }
 
     $voip_session->save();
@@ -213,7 +212,7 @@ class VoipPlivoServer extends VoipServer {
     if (voip_debug()) {
       $id = $voipcall->getCallId();
       $status = $voipcall->getCallStatus();
-      watchdog('voipplivo', "in hangup() with call id: $id and status: $status");
+      watchdog('voipplivoframework', "in hangup() with call id: $id and status: $status");
     }
     $rc = FALSE;
     voip_error_reset();
@@ -224,9 +223,9 @@ class VoipPlivoServer extends VoipServer {
 
     // Plivo configuration
     $api_version = 'v0.1';
-    $rest_api_url = $server_config['voipplivo_restapi_url'];
-    $account_sid = $server_config['voipplivo_account_sid'];
-    $auth_token = $server_config['voipplivo_auth_token'];
+    $rest_api_url = $server_config['voipplivoframework_restapi_url'];
+    $account_sid = $server_config['voipplivoframework_account_sid'];
+    $auth_token = $server_config['voipplivoframework_auth_token'];
 
     // Instantiate a new Plivo Rest Client
     $client = new PlivoRestClient($rest_api_url, $account_sid, $auth_token, $api_version);
@@ -235,12 +234,12 @@ class VoipPlivoServer extends VoipServer {
     if (!$call_id) {
       $msg = "Attempt to hangup a Plivo call (cid = @cid) without a call id";
       $params = array('@cid' => $voipcall->getCid());
-      $voipcall->report_error('voipplivo', $msg, $params);
+      $voipcall->report_error('voipplivoframework', $msg, $params);
       $rc = FALSE;
     }
     else {
       //$plivo_path = "/$api_version/Accounts/$account_sid/Calls/$call_id";
-      $vars =    array(
+      $vars = array(
         'CallUUID' => $call_id, # Request UUID to hangup call
       );
 
@@ -250,7 +249,7 @@ class VoipPlivoServer extends VoipServer {
       if ($response->IsError) {
         $msg = "Plivo hangup command failed: @error";
         $params = array('@error' => $response->ErrorMessage);
-        $voipcall->report_error('voipplivo', $msg, $params);
+        $voipcall->report_error('voipplivoframework', $msg, $params);
       }
       else {
         $voipcall->setHangupReason(VoipCall::HANGUP_API_REQUEST);
@@ -266,19 +265,19 @@ class VoipPlivoServer extends VoipServer {
    * Implementation of the VoipServer text_handler() API method
    */
   function text_handler($text_content, $origin, $destination, $time, $network, $server_name) {
-    $menu_path = 'voip/plivo/callhandler';
+    $menu_path = 'voip/plivoframework/callhandler';
     $request_url = $menu_path . '/process_inbound_text/';
     $url = url($request_url, array('absolute' => TRUE));
 
     $server_config = $this->getConfig();
     $vars = array(
-      'AccountSid' => $server_config['voipplivo_account_sid'],
+      'AccountSid' => $server_config['voipplivoframework_account_sid'],
       'SmsSid' => $todo,
       'From' => $origin,
       'To' => $destination,
       'Body' => $text_content,
       'Direction' => 'inbound',
-      'Channel' => 'offline_text',
+      'Channel' => 'offline_text'
     );
 
     //url-ify the data for the POST
@@ -294,7 +293,7 @@ class VoipPlivoServer extends VoipServer {
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_POST, count($vars));
     curl_setopt($ch, CURLOPT_POSTFIELDS, $fields_string);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
 
     //execute post
     $result = curl_exec($ch);
@@ -314,9 +313,9 @@ class VoipPlivoServer extends VoipServer {
 
     // Plivo configuration
     $api_version = 'v0.1';
-    $rest_api_url = $server_config['voipplivo_restapi_url'];
-    $account_sid = $server_config['voipplivo_account_sid'];
-    $auth_token = $server_config['voipplivo_auth_token'];
+    $rest_api_url = $server_config['voipplivoframework_restapi_url'];
+    $account_sid = $server_config['voipplivoframework_account_sid'];
+    $auth_token = $server_config['voipplivoframework_auth_token'];
 
     // Instantiate a new Plivo Rest Client
     try {
@@ -332,8 +331,7 @@ class VoipPlivoServer extends VoipServer {
         return FALSE;
       }
       return TRUE;
-    }
-    catch (Exception $e) {
+    } catch (Exception $e) {
       voip_error($e->getMessage());
       return FALSE;
     }
@@ -342,29 +340,25 @@ class VoipPlivoServer extends VoipServer {
   /**
    * Private methods
    */
-  // @todo private static function _get_available_voices() {
+  //@todo:  private static function _get_available_voices() {
   static function _get_available_voices() {
     // Note: check http://festvox.org/voicedemos.html for demos of the different voices
     $voices = array();
     $voices['slt'] = array(
-      'language' => 'en',
-      'voice' => 'woman',
-      'description' => t('Slt (female voice in American English)'),
+      'language' => 'en', 'voice' => 'woman',
+      'description' => t('Slt (female voice in American English)')
     );
     $voices['rms'] = array(
-      'language' => 'en',
-      'voice' => 'man',
-      'description' => t('Rms (male voice in American English)'),
+      'language' => 'en', 'voice' => 'man',
+      'description' => t('Rms (male voice in American English)')
     );
     $voices['awb'] = array(
-      'language' => 'en2',
-      'voice' => 'man',
-      'description' => t('Awb (male voice in Scottish English)'),
+      'language' => 'en2', 'voice' => 'man',
+      'description' => t('Awb (male voice in Scottish English)')
     );
     $voices['kal'] = array(
-      'language' => 'en-us',
-      'voice' => 'man',
-      'description' => t('Kal (male voice in American English)'),
+      'language' => 'en-us', 'voice' => 'man',
+      'description' => t('Kal (male voice in American English)')
     );
     return $voices;
   }
