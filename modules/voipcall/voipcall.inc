@@ -49,6 +49,7 @@ class VoipCall {
   const BUSY = 'busy';
   const INVALID = 'invalid_number';
   const CANCELED = 'canceled'; // canceled by the system while queued or ringing
+  const REJECTED = 'rejected';
 
   /**
    * 'direction' field values
@@ -112,16 +113,19 @@ class VoipCall {
    * @return
    *   The VoipCall instance, or NULL in case of an invalid cid
    */
+
   public static function load($cid) {
     $call = NULL;
-    $call_data =
-      db_fetch_object(db_query("SELECT * FROM {voipcall} WHERE cid = :cid", array(':cid' => $cid)));
-    if ($call_data) {
-      // unserialize the call script
-      $script = unserialize($call_data->script);
-      $call_data->script = $script;
+    $result = db_query("SELECT * FROM {voipcall} WHERE cid = :cid", array(':cid' => $cid));
+    foreach($result as $call_data) {
+      if ($call_data) {
+        // unserialize the call script
+        $script = unserialize($call_data->script);
+        $call_data->script = $script;
 
-      $call = new VoipCall($call_data);
+        $call = new VoipCall($call_data);
+        break;
+      }
     }
     return $call;
   }
@@ -133,13 +137,12 @@ class VoipCall {
    *
    * @return $cid or NULL depending on the result of the query
    */
+
   public static function getCidFromCallId($call_id) {
     // fetch the desired voipcall data
     $cid = db_query("SELECT cid FROM {voipcall} WHERE call_id = :call_id", array(':call_id' => $call_id))->fetchField();
     return $cid;
   }
-
-
 
   /*
    * Public methods
@@ -174,11 +177,9 @@ class VoipCall {
    */
   public function delete() {
     $cid = $this->call_data->cid;
-    // TODO Please review the conversion of this statement to the D7 database API syntax.
-    /* db_query("DELETE FROM {voipcall} WHERE cid=%d", $cid) */
     $res = db_delete('voipcall')
-  ->condition('cid', $cid)
-  ->execute();
+    ->condition('cid', $cid)
+    ->execute();
     $this->call_data = NULL;
     return $res;
   }
@@ -247,6 +248,15 @@ class VoipCall {
   public function setUid($uid) {
     $this->call_data->uid = $uid;
   }
+  
+  public function loadGlobalUser(){
+    $uid = $this->getUid();
+    if(empty($uid)){
+      $uid = 0;
+    }
+    global $user;
+    $user = user_load($uid);
+  }
 
   public function getCallId() {
     return $this->call_data->call_id;
@@ -257,11 +267,11 @@ class VoipCall {
   }
 
   public function getDestNumber() {
-    return $this->call_data->dest_number;
+    return isset($this->call_data->dest_number) ? $this->call_data->dest_number : "";
   }
 
   public function setDestNumber($number) {
-    $this->call_data->dest_number = $number;
+    $this->call_data->dest_number = voipcall_normalize_phone_number($number);
   }
 
   public function getDestName() {
@@ -273,15 +283,15 @@ class VoipCall {
   }
 
   public function getCallerNumber() {
-    return $this->call_data->caller_number;
+    return isset($this->call_data->caller_number) ? $this->call_data->caller_number : "";
   }
 
   public function setCallerNumber($number) {
-    $this->call_data->caller_number = $number;
+    $this->call_data->caller_number = voipcall_normalize_phone_number($number);
   }
 
   public function getCallerName() {
-    return $this->call_data->caller_name;
+    return isset($this->call_data->caller_name) ? $this->call_data->caller_name : "";
   }
 
   public function setCallerName($name) {
@@ -343,6 +353,14 @@ class VoipCall {
       }
     }
     return $description;
+  }
+  
+  public function getProcessingHangup() {
+    return $this->call_data->processing_hangup;
+  }
+
+  public function setProcessingHangup($processing_hangup) {
+    $this->call_data->processing_hangup = $processing_hangup;
   }
 
   public function getAnsweredBy() {
@@ -577,21 +595,21 @@ class VoipCall {
     }
 
     // if this is a new call data being created
-    if (is_null($details->cid)) {
-      // TODO Why does this get called so many times when a call goes out?
-      // TODO Why doesn't this save new data every time a call blast goes out, e.g. unchecking blast sent ?
+    if (!isset($details->cid) || is_null($details->cid)) {
+      // @TODO Why does this get called so many times when a call goes out?
 
       $data = new stdClass();
       $update = NULL;
       $data->created = REQUEST_TIME;
 
-      // set the data uid
-      global $user;
-      $data->uid = $user->uid;
-
       // initialize the 'Call Id' field
       if (!isset($details->call_id)) {
         $data->call_id = NULL;
+      }
+	  
+	  // initialize 'Caller Number' field
+      if (!isset($details->caller_number)) {
+        $data->caller_number = variable_get('voipcall_cid_number', NULL);
       }
 
       // initialize 'Call Status' field
@@ -624,7 +642,8 @@ class VoipCall {
         $data->call_channel = 'voice';
       }
       if (!isset($details->current_channel)) {
-        $data->current_channel = 'voice';
+        //$data->current_channel = 'voice';
+        $details->current_channel = 'voice';
       }
 
       // initialize 'Network' fields
@@ -636,9 +655,8 @@ class VoipCall {
       }
 
       // initialize voice call script with the default inbound/outbound one
-      $dir_tmp = $details->direction;
-      $direction = $dir_tmp ? $dir_tmp
-                              : $data->direction;
+      $direction = isset($details->direction) ? $details->direction : $data->direction;
+      
       if (!isset($details->script)) {
         if ($details->current_channel == 'text' || $details->current_channel == 'offline_text') {
           $script_name = voipcall_get_default_inbound_text_script_name();
@@ -661,140 +679,162 @@ class VoipCall {
         $data->hangup_reason = NULL;
       }
 
+	  // initialize 'Error message' field
+      if (!isset($details->error_message)) {
+        $data->error_message = NULL;
+      }
+	  
+	  // initialize 'Processing Hangup'' field
+      if (!isset($details->processing_hangup)) {
+        $data->processing_hangup = FALSE;
+      }
+
       // initialize 'Check Machine' field
       if (!isset($details->check_machine)) {
         $data->check_machine = FALSE;
+      }
+	  
+	  // initialize 'Dest name' field
+      if (!isset($details->dest_name)) {
+        $data->dest_name = NULL;
       }
 
     }
     else {
       // load the data
-      $data = db_fetch_object(db_query("SELECT * FROM {voipcall} WHERE cid = :cid", array(':cid' => $details->cid)));
+      $data = db_query("SELECT * FROM {voipcall} WHERE cid = :cid", array(':cid' => $details->cid))->fetchObject();
       $update = 'cid';
       $data->changed = REQUEST_TIME;
     }
 
     // update data fields
-    $new_dest_number = $details->dest_number;
-
-    if (isset($details->uid)) {
+    /*if (isset($details->uid)) {
       $data->uid = $details->uid;
-    }
+    }*/
+    
+    // update call uid based on current user
+    global $user;
+    $data->uid = $user->uid;
 
     // update voipcall-specific fields
 
-    $new_call_id = $details->call_id;
-    if (isset($new_call_id)) {
-      $data->call_id = $new_call_id;
+
+    if (isset($details->call_id)) {
+      $data->call_id = $details->call_id;
     }
 
-    $new_dest_number = $details->dest_number;
+    $new_dest_number = isset($details->dest_number) ? $details->dest_number : NULL;
     if (isset($new_dest_number)) {
       $data->dest_number = $new_dest_number;
     }
 
-    $new_dest_name = $details->dest_name;
+    $new_dest_name = isset($details->dest_name) ? $details->dest_name : NULL;
     if (isset($new_dest_name)) {
       $data->dest_name = $new_dest_name;
     }
 
-    $new_caller_number = $details->caller_number;
+    $new_caller_number = isset($details->caller_number) ? $details->caller_number : NULL;
     if (isset($new_caller_number)) {
       $data->caller_number = $new_caller_number;
     }
 
-    $new_caller_name = $details->caller_name;
+    $new_caller_name = isset($details->caller_name) ? $details->caller_name : NULL;
     if (isset($new_caller_name)) {
       $data->caller_name = $new_caller_name;
     }
 
-    $new_call_status = $details->status;
+    $new_call_status = isset($details->status) ? $details->status : NULL;
     if (isset($new_call_status)) {
       $data->status = $new_call_status;
     }
 
-    $new_answered_by = $details->answered_by;
+    $new_answered_by = isset($details->answered_by) ? $details->answered_by : NULL;
     if (isset($new_answered_by)) {
       $data->answered_by = $new_answered_by;
     }
 
-    $new_text_status = $details->text_status;
+    $new_text_status = isset($details->text_status) ? $details->text_status : NULL;
     if (isset($new_text_status)) {
       $data->text_status = $new_text_status;
     }
 
-    $new_source = $details->source;
+    $new_source = isset($details->source) ? $details->source : NULL;
     if (isset($new_source)) {
       $data->source =  $new_source;
     }
 
-    $new_direction = $details->direction;
+    $new_direction = isset($details->direction) ? $details->direction : NULL;
     if (isset($new_direction)) {
       $data->direction =  $new_direction;
     }
 
-    $new_start_time = $details->start_time;
+    $new_start_time = isset($details->start_time) ? $details->start_time : NULL;
     if (!isset($new_start_time)) {
       $new_start_time = REQUEST_TIME;
     }
     $data->start_time = $new_start_time;
 
-    $new_end_time = $details->end_time;
+    $new_end_time = isset($details->end_time) ? $details->end_time : NULL;
     if (isset($new_end_time)) {
       $data->end_time = $new_end_time;
     }
 
-    $new_duration = $details->duration;
+    $new_duration = isset($details->duration) ? $details->duration : NULL;
     if (isset($new_duration)) {
       $data->duration = $new_duration;
     }
 
-    $new_max_session_duration = $details->max_session_duration;
+    $new_max_session_duration = isset($details->max_session_duration) ? $details->max_session_duration : NULL;
     if (isset($new_max_session_duration)) {
       $data->max_session_duration = $new_max_session_duration;
     }
 
-    $new_error_message = $details->error_message;
+    $new_error_message = isset($details->error_message) ? $details->error_message : NULL;
     if (isset($new_error_message)) {
       $data->error_message = $new_error_message;
     }
 
-    $call_channel = $details->call_channel;
+    $call_channel = isset($details->call_channel) ? $details->call_channel : NULL;
     if (isset($call_channel)) {
       $data->call_channel = $call_channel;
     }
 
-    $current_channel = $details->current_channel;
+    $current_channel = isset($details->current_channel) ? $details->current_channel : NULL;
     if (isset($current_channel)) {
       $data->current_channel = $current_channel;
     }
 
-    $call_network = $details->call_network;
+    $call_network = isset($details->call_network) ? $details->call_network : NULL;
     if (isset($call_network)) {
       $data->call_network = $call_network;
     }
 
-    $current_network = $details->current_network;
+    $current_network = isset($details->current_network) ? $details->current_network : NULL;
     if (isset($current_network)) {
       $data->current_network = $current_network;
     }
 
-    $new_script = $details->script;
+    $new_script = isset($details->script) ? $details->script : NULL;
     if (isset($new_script)) {
       $data->script =  serialize($new_script);
     }
 
-    $new_hangup_script_name = $details->hangup_script;
+    $new_hangup_script_name = isset($details->hangup_script) ? $details->hangup_script : NULL;
     if (isset($new_hangup_script_name)) {
       $data->hangup_script =  $new_hangup_script_name;
     }
 
-    $new_hangup_reason = $details->hangup_reason;
+    $new_hangup_reason = isset($details->hangup_reason) ? $details->hangup_reason : NULL;
     if (isset($new_hangup_reason)) {
       $data->hangup_reason =  $new_hangup_reason;
     }
+	
+	$processing_hangup = isset($details->processing_hangup) ? $details->processing_hangup : NULL;
+    if (isset($processing_hangup)) {
+      $data->processing_hangup = $processing_hangup;
+    }
 
-    $new_check = $details->check_machine;
+    $new_check = isset($details->check_machine) ? $details->check_machine : NULL;
     if (isset($new_check)) {
       $data->check_machine =  $new_check;
     }
@@ -807,7 +847,12 @@ class VoipCall {
     }
 
     // save the data
-    drupal_write_record('voipcall', $data, $update);
+    if(is_null($update)) {
+      drupal_write_record('voipcall', $data);
+    }
+    else {
+      drupal_write_record('voipcall', $data, $update);
+    }
 
     return $data;
   }
@@ -828,8 +873,10 @@ class VoipCall {
     $call_data = $this->call_data;
 
     // add call variables to script variables
-
-    $script->setVar('uid', $call_data->uid);
+	$script->setVar('cid',
+      $call_data->cid);
+    // Note: 'uid' should only be accessed from global $user
+    // $script->setVar('uid', $call_data->uid);
 
     $script->setVar('call_id',
       $call_data->call_id);
@@ -872,6 +919,15 @@ class VoipCall {
 
     $script->setVar('hangup_reason',
         $call_data->hangup_reason);
+		
+	$script->setVar('processing_hangup',
+      $call_data->processing_hangup);
+	
+    $script->setVar('current_channel',
+      $call_data->current_channel);
+
+    $script->setVar('current_network',
+      $call_data->current_network);	
 
     $script->setVar('check_machine',
         $call_data->check_machine);

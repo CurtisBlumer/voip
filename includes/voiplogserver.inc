@@ -27,22 +27,6 @@ class VoipLogServer extends VoipServer {
 
 
   /*
-   * Public methods
-   *
-   * NOTE: the following methods are not to be called. They are only implemented
-   *       because VoipServer is an abstract class.
-   */
-
-  function getDefaultLanguage() {
-    return 'en';
-  }
-
-  function getDefaultVoice() {
-    return 'man';
-  }
-
-
-  /*
    * API methods
    */
 
@@ -95,37 +79,4 @@ class VoipLogServer extends VoipServer {
     return TRUE;
   }
 
-}
-
-/**
- * Implements hook_voipserver_info().
- */
-function voip_voipserver_info() {
-  $server = new VoipLogServer();
-  return $server;
-}
-
-/**
- * Implements hook_getvoices().
- */
-function voip_getvoices($language, $gender, $is_local) {
-
-  if (variable_get('voip_default_server', 'log') != 'log') {
-    //Return if this VoIP Server is not set as default
-    return array();
-  }
-  if ($is_local === TRUE) {
-    //This module doesn't declare local voices
-    return array();
-  }
-
-
-  $voices = array();
-  $voices['voip_log'] = array(
-    'language' => 'en',
-    'voice' => 'man',
-    'description' => t('Log - VoIP Drupal Log voice'),
-  );
-
-  return $voices;
 }

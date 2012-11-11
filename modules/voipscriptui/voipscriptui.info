@@ -4,10 +4,12 @@ name = "VoIP Script UI"
 package = "VoIP Drupal"
 project = "voipscriptui"
 
-dependencies[] = "features"
-dependencies[] = "text"
-dependencies[] = "views"
+dependencies[] = features
+dependencies[] = field_sql_storage
+dependencies[] = node
+dependencies[] = text
+features[features_api][] = api:1
+features[field][] = node-voipscriptui-field_voipscriptui_code
+features[node][] = voipscriptui
 
-features[content][] = "voipscriptui-field_voipscriptui_code"
-features[node][] = "voipscriptui"
 

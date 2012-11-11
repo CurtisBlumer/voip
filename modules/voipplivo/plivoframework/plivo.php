@@ -7,17 +7,17 @@
 // ensure Curl is installed
 //@tamerzg: removed and added into drupal hook_requirements
 /*if(!extension_loaded("curl"))
- throw(new Exception(
- "Curl extension is required for PlivoRestClient to work"));
- */
+    throw(new Exception(
+        "Curl extension is required for PlivoRestClient to work"));
+*/
 /*
- * PlivoRestResponse holds all the REST response data
- * Before using the reponse, check IsError to see if an exception
- * occurred with the data sent to Plivo
- * ResponseJson contains the raw json response
- * Url and QueryString are from the request
- * HttpStatus is the response code of the request
- */
+* PlivoRestResponse holds all the REST response data
+* Before using the reponse, check IsError to see if an exception
+* occurred with the data sent to Plivo
+* ResponseJson contains the raw json response
+* Url and QueryString are from the request
+* HttpStatus is the response code of the request
+*/
 class PlivoRestResponse {
 
   public $ResponseJson;
@@ -44,7 +44,7 @@ class PlivoRestResponse {
       }
       else {
         $this->ErrorMessage =
-                    (string) $this->Response->Message;
+          (string) $this->Response->Message;
       }
     }
   }
@@ -52,17 +52,18 @@ class PlivoRestResponse {
 }
 
 /* PlivoRestClient throws PlivoException on error
- * Useful to catch this exception separately from general PHP
- * exceptions, if you want
- */
-class PlivoException extends Exception { }
+* Useful to catch this exception separately from general PHP
+* exceptions, if you want
+*/
+class PlivoException extends Exception {
+}
 
 /*
- * PlivoRestBaseClient: the core Rest client, talks to the Plivo REST
- * API. Returns a PlivoRestResponse object for all responses if Plivo's
- * API was reachable Throws a PlivoException if Plivo's REST API was
- * unreachable
- */
+* PlivoRestBaseClient: the core Rest client, talks to the Plivo REST
+* API. Returns a PlivoRestResponse object for all responses if Plivo's
+* API was reachable Throws a PlivoException if Plivo's REST API was
+* unreachable
+*/
 
 class PlivoRestClient {
 
@@ -72,12 +73,12 @@ class PlivoRestClient {
   protected $ApiVersion;
 
   /*
-   * __construct
-   *   $username : Plivo Sid
-   *   $password : Plivo AuthToken
-   *   $endpoint : The Plivo REST URL
-   *   $ApiVersion : The API version
-   */
+  * __construct
+  *   $username : Plivo Sid
+  *   $password : Plivo AuthToken
+  *   $endpoint : The Plivo REST URL
+  *   $ApiVersion : The API version
+  */
   public function __construct($endpoint, $accountSid, $authToken, $ApiVersion = 'v0.1') {
     $this->AccountSid = $accountSid;
     $this->AuthToken = $authToken;
@@ -86,18 +87,18 @@ class PlivoRestClient {
   }
 
   /*
-   * sendRequst
-   *   Sends a REST Request to the Plivo REST API
-   *   $path : the URL (relative to the endpoint URL, after the /v1)
-   *   $method : the HTTP method to use, defaults to GET
-   *   $vars : for POST or PUT, a key/value associative array of data to
-   * send, for GET will be appended to the URL as query params
-   */
+  * sendRequst
+  *   Sends a REST Request to the Plivo REST API
+  *   $path : the URL (relative to the endpoint URL, after the /v1)
+  *   $method : the HTTP method to use, defaults to GET
+  *   $vars : for POST or PUT, a key/value associative array of data to
+  * send, for GET will be appended to the URL as query params
+  */
   public function request($path, $method = "GET", $vars = array()) {
-    $fp = null;
+    $fp = NULL;
     $tmpfile = "";
     $encoded = "";
-    foreach ($vars as $key => $value) {
+    foreach ($vars AS $key => $value) {
       $encoded .= "$key=" . urlencode($value) . "&";
     }
     $encoded = substr($encoded, 0, -1);
@@ -113,7 +114,7 @@ class PlivoRestClient {
     // initialize a new curl object
     $curl = curl_init($url);
 
-    curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, FALSE);
     curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);
 
     curl_setopt($curl, CURLOPT_RETURNTRANSFER, TRUE);
@@ -130,11 +131,11 @@ class PlivoRestClient {
         curl_setopt($curl, CURLOPT_POSTFIELDS, $encoded);
         curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "PUT");
         file_put_contents($tmpfile = tempnam("/tmp", "put_"),
-                        $encoded);
+          $encoded);
         curl_setopt($curl, CURLOPT_INFILE, $fp = fopen($tmpfile,
-                        'r'));
+          'r'));
         curl_setopt($curl, CURLOPT_INFILESIZE,
-                        filesize($tmpfile));
+          filesize($tmpfile));
         break;
       case "DELETE":
         curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "DELETE");
@@ -146,12 +147,12 @@ class PlivoRestClient {
 
     // send credentials
     curl_setopt($curl, CURLOPT_USERPWD,
-                $pwd = "{$this->AccountSid}:{$this->AuthToken}");
+      $pwd = "{$this->AccountSid}:{$this->AuthToken}");
 
     // do the request. If FALSE, then an exception occurred
     if (FALSE === ($result = curl_exec($curl))) {
       throw(new PlivoException(
-                    "Curl failed with error " . curl_error($curl)));
+        "Curl failed with error " . curl_error($curl)));
     }
 
     // get result code
@@ -390,11 +391,11 @@ class PlivoRestClient {
 // ========================================================================
 
 /*
- * Element: Base class for all RESTXML element elements used in creating Responses
- * Throws a PlivoException if an non-supported attribute or
- * attribute value is added to the element. All methods in Element are protected
- * or private
- */
+* Element: Base class for all RESTXML element elements used in creating Responses
+* Throws a PlivoException if an non-supported attribute or
+* attribute value is added to the element. All methods in Element are protected
+* or private
+*/
 
 class Element {
   private $tag;
@@ -403,10 +404,10 @@ class Element {
   private $children;
 
   /*
-   * __construct
-   *   $body : Element contents
-   *   $body : Element attributes
-   */
+  * __construct
+  *   $body : Element contents
+  *   $body : Element attributes
+  */
   function __construct($body = NULL, $attr = array()) {
     if (is_array($body)) {
       $attr = $body;
@@ -420,12 +421,12 @@ class Element {
   }
 
   /*
-   * addAttributes
-   *     $attr  : A key/value array of attributes to be added
-   *     $valid : A key/value array containging the accepted attributes
-   *     for this element
-   *     Throws an exception if an invlaid attribute is found
-   */
+  * addAttributes
+  *     $attr  : A key/value array of attributes to be added
+  *     $valid : A key/value array containging the accepted attributes
+  *     for this element
+  *     Throws an exception if an invlaid attribute is found
+  */
   private function addAttributes($attr) {
     foreach ($attr as $key => $value) {
       if (in_array($key, $this->valid)) {
@@ -433,37 +434,41 @@ class Element {
       }
       else {
         throw new PlivoException($key . ', ' . $value .
-                       " is not a supported attribute pair");
+          " is not a supported attribute pair");
       }
     }
   }
 
   /*
-   * append
-   *     Nests other element elements inside self.
-   */
+  * append
+  *     Nests other element elements inside self.
+  */
   function append($element) {
     if (!isset($this->nesting) or is_null($this->nesting)) {
       throw new PlivoException($this->tag . " doesn't support nesting");
     }
-    else if (!is_object($element)) {
-      throw new PlivoException($element->tag . " is not an object");
-    }
-    else if (!in_array(get_class($element), $this->nesting)) {
-      throw new PlivoException($element->tag . " is not an allowed element here");
-    }
     else {
-      $this->children[] = $element;
-      return $element;
+      if (!is_object($element)) {
+        throw new PlivoException($element->tag . " is not an object");
+      }
+      else {
+        if (!in_array(get_class($element), $this->nesting)) {
+          throw new PlivoException($element->tag . " is not an allowed element here");
+        }
+        else {
+          $this->children[] = $element;
+          return $element;
+        }
+      }
     }
   }
 
   /*
-   * set
-   *     $attr  : An attribute to be added
-   *    $valid : The attrbute value for this element
-   *     No error checking here
-   */
+  * set
+  *     $attr  : An attribute to be added
+  *    $valid : The attrbute value for this element
+  *     No error checking here
+  */
   function set($key, $value) {
     $this->attr[$key] = $value;
   }
@@ -522,12 +527,12 @@ class Element {
   }
 
   /*
-   * write
-   * Output the XML for this element and all it's children
-   *    $parent: This element's parent element
-   *    $writeself : If FALSE, Element will not output itself,
-   *    only its children
-   */
+  * write
+  * Output the XML for this element and all it's children
+  *    $parent: This element's parent element
+  *    $writeself : If FALSE, Element will not output itself,
+  *    only its children
+  */
   protected function write($parent, $writeself = TRUE) {
     if ($writeself) {
       $elem = $parent->addChild($this->tag, htmlspecialchars($this->body));
@@ -564,14 +569,14 @@ class Response extends Element {
     'PreAnswer',
     'Conference',
     'GetSpeech',
-    'SIPTransfer',
+    'SIPTransfer'
   );
 
   function __construct() {
     parent::__construct(NULL);
   }
 
-  function Respond($sendHeader = true) {
+  function Respond($sendHeader = TRUE) {
     // try to force the xml data type
     // this is generally unneeded by Plivo, but nice to have
     if ($sendHeader) {
@@ -596,13 +601,22 @@ class Response extends Element {
   }
 
 }
+
 /**
  * The <Speak> element converts text to speech that is read back to the caller.
  * <Speak> is useful for development or saying dynamic text that is difficult to pre-record.
  */
 class Speak extends Element {
 
-  protected $valid = array('voice', 'language', 'loop', 'engine', 'method', 'type');
+  protected $valid = array(
+    'voice',
+    'language',
+    'loop',
+    'engine',
+    'method',
+    'type'
+  );
+
   /**
    * Speak Constructor
    *
@@ -620,6 +634,7 @@ class Speak extends Element {
     parent::__construct($text, $attr);
   }
 }
+
 /**
  * The <Play> element plays an audio file back to the caller.
  * Plivo retrieves the file from a URL that you provide.
@@ -651,32 +666,32 @@ class Play extends Element {
  * attribute of the <Record> element to 'true'.
  */
 /*
- class Record extends Element {
+class Record extends Element {
 
- protected $valid = array('action', 'method', 'timeout','finishOnKey',
- 'maxLength', 'bothLegs', 'playBeep',
- 'fileFormat', 'filePath', 'fileName');
+protected $valid = array('action', 'method', 'timeout','finishOnKey',
+                         'maxLength', 'bothLegs', 'playBeep',
+                         'fileFormat', 'filePath', 'fileName');
 
- /**
- * Record Constructor
- *
- * Instatiates a new Record object with optional attributes.
- * Possible attributes are:
- *   "action" =>  absolute url,
- *   "method" => 'GET'|'POST', (default: POST)
- *   "timeout" => positive integer, (default: 5)
- *   "finishOnKey"   => any digit, #, * (default: 1234567890*#)
- *   "maxLength" => integer >= 1, (default: 3600, 1hr)
- *   "playBeep" => true|false, (default: true)
- *
- * @param array $attr Optional attributes
- * @return Record
- */
+/**
+* Record Constructor
+*
+* Instatiates a new Record object with optional attributes.
+* Possible attributes are:
+*   "action" =>  absolute url,
+*   "method" => 'GET'|'POST', (default: POST)
+*   "timeout" => positive integer, (default: 5)
+*   "finishOnKey"   => any digit, #, * (default: 1234567890*#)
+*   "maxLength" => integer >= 1, (default: 3600, 1hr)
+*   "playBeep" => true|false, (default: true)
+*
+* @param array $attr Optional attributes
+* @return Record
+*/
 /*
- function __construct($attr = array()) {
- parent::__construct($attr);
- }
- }*/
+    function __construct($attr = array()) {
+        parent::__construct($attr);
+    }
+}*/
 
 /**
  * The <Dial> element connects the current caller to an another phone.
@@ -705,7 +720,7 @@ class Dial extends Element {
     'redirect',
     'callbackUrl',
     'callbackMethod',
-    'digitsMatch',
+    'digitsMatch'
   );
 
   protected $nesting = array('Number');
@@ -722,7 +737,7 @@ class Dial extends Element {
    *   "timeLimit" => integer >= 0, (default: 14400, 4hrs)
    *   "callerId" => valid phone #, (default: Caller's callerid)
    *   "redirect" => true|false, if 'false', don't redirect to 'action', only request url
-   *	and continue to next element. (default 'true')
+   *  and continue to next element. (default 'true')
    *
    * @param string|Number|Conference $number The number or conference you wish to call
    * @param array $attr Optional attributes
@@ -733,32 +748,33 @@ class Dial extends Element {
   }
 
 }
+
 /**
  * The <Redirect> element transfers control of a call to the RESTXML at a
  * different URL. All element elements after <Redirect> are unreachable and ignored.
  */
 /*
- class Redirect extends Element {
+class Redirect extends Element {
 
- protected $valid = array('method');
+protected $valid = array('method');
 
- /**
- * Redirect Constructor
- *
- * Instatiates a new Redirect object with text and optional attributes.
- * Possible attributes are:
- *   "method" => 'GET'|'POST', (default: POST)
- *
- * @param string $url An absolute or relative URL for a different RESTXML document.
- * @param array $attr Optional attributes
- * @return Redirect
- */
+/**
+* Redirect Constructor
+*
+* Instatiates a new Redirect object with text and optional attributes.
+* Possible attributes are:
+*   "method" => 'GET'|'POST', (default: POST)
+*
+* @param string $url An absolute or relative URL for a different RESTXML document.
+* @param array $attr Optional attributes
+* @return Redirect
+*/
 /*
- function __construct($url='', $attr = array()) {
- parent::__construct($url, $attr);
- }
+    function __construct($url='', $attr = array()) {
+        parent::__construct($url, $attr);
+    }
 
- }*/
+}*/
 /**
  * The <SIPTransfer> element transfers a sip call.
  */
@@ -778,6 +794,7 @@ class SIPTransfer extends Element {
   }
 
 }
+
 /**
  * The <Wait> element waits silently for a specific number of seconds.
  * If <Wait> is the first element in a RESTXML document, Plivo will wait
@@ -802,6 +819,7 @@ class Wait extends Element {
   }
 
 }
+
 /**
  * The <Hangup> element ends a call. If used as the first element in a RESTXML
  * response it does not prevent Plivo from answering the call and billing
@@ -809,26 +827,26 @@ class Wait extends Element {
  * is to use the <Reject> element.
  */
 /*
- class Hangup extends Element {
+class Hangup extends Element {
 
- protected $valid = array('reason', 'schedule');
+protected $valid = array('reason', 'schedule');
 
- /**
- * Hangup Constructor
- *
- * Instatiates a new Hangup object object with optional attributes.
- * Possible attributes are:
- *   "reason" => 'rejected'|'busy'
- *   "schedule" => '25'
- *
- * @return Hangup
- */
+/**
+* Hangup Constructor
+*
+* Instatiates a new Hangup object object with optional attributes.
+* Possible attributes are:
+*   "reason" => 'rejected'|'busy'
+*   "schedule" => '25'
+*
+* @return Hangup
+*/
 /*
- function __construct($attr = array()) {
- parent::__construct(NULL, $attr);
- }
+    function __construct($attr = array()) {
+        parent::__construct(NULL, $attr);
+    }
 
- }*/
+}*/
 
 /**
  * The <GetDigits> element collects digits that a caller enters into his or her
@@ -846,18 +864,12 @@ class Wait extends Element {
 class GetDigits extends Element {
 
   protected $valid = array(
-    'action',
-    'method',
-    'timeout',
-    'finishOnKey',
-    'numDigits',
-    'retries',
-    'invalidDigitsSound',
-    'validDigits',
-    'playBeep',
+    'action', 'method', 'timeout', 'finishOnKey',
+    'numDigits', 'retries', 'invalidDigitsSound', 'validDigits', 'playBeep'
   );
 
   protected $nesting = array('Speak', 'Play', 'Wait');
+
   /**
    * GetDigits Constructor
    *
@@ -877,6 +889,7 @@ class GetDigits extends Element {
   }
 
 }
+
 /**
  * The <Dial> element's <Number> noun specifies a phone number to dial.
  * Using the noun's attributes you can specify particular behaviors
@@ -889,13 +902,8 @@ class GetDigits extends Element {
 class Number extends Element {
 
   protected $valid = array(
-    'sendDigits',
-    'sendOnPreanswer',
-    'gateways',
-    'gatewayCodecs',
-    'gatewayTimeouts',
-    'gatewayRetries',
-    'extraDialString',
+    'sendDigits', 'sendOnPreanswer', 'gateways', 'gatewayCodecs',
+    'gatewayTimeouts', 'gatewayRetries', 'extraDialString'
   );
 
   /**
@@ -914,6 +922,7 @@ class Number extends Element {
   }
 
 }
+
 /**
  * The <Dial> element's <Conference> noun allows you to connect to a conference
  * room. Much like how the <Number> noun allows you to connect to another
@@ -928,61 +937,61 @@ class Number extends Element {
  * single Plivo conference room is 40.
  */
 /*
- class Conference extends Element {
+class Conference extends Element {
 
- protected $valid = array('muted','beep','startConferenceOnEnter',
- 'endConferenceOnExit','waitSound','enterSound', 'exitSound',
- 'timeLimit', 'hangupOnStar', 'maxMembers', 'recordFilePath',
- 'recordFileFormat', 'recordFileName', 'action', 'method',
- 'callbackUrl', 'callbackMethod', 'digitsMatch',
- 'floorEvent', 'stayAlone');
+protected $valid = array('muted','beep','startConferenceOnEnter',
+    'endConferenceOnExit','waitSound','enterSound', 'exitSound',
+    'timeLimit', 'hangupOnStar', 'maxMembers', 'recordFilePath',
+    'recordFileFormat', 'recordFileName', 'action', 'method',
+'callbackUrl', 'callbackMethod', 'digitsMatch',
+'floorEvent', 'stayAlone');
 
- /**
- * Conference Constructor
- *
- * Instatiates a new Conference object with room and optional attributes.
- * Possible attributes are:
- *   waitSound: sound to play while alone in conference
- *       (default no sound)
- *   muted: enter conference muted
- *       (default false)
- *   startConferenceOnEnter: the conference start when this member joins
- *       (default true)
- *   endConferenceOnExit: close conference after this member leaves
- *       (default false)
- *   maxMembers: max members in conference
- *       (0 for max : 200)
- *   enterSound: if "", disabled
- *       if beep:1, play one beep when a member enters
- *       if beep:2 play two beeps when a member enters
- *       (default "")
- *   exitSound: if "", disabled
- *       if beep:1, play one beep when a member exits
- *       if beep:2 play two beeps when a member exits
- *       (default "")
- *   timeLimit: max time before closing conference
- *       (default 14400 seconds)
- *   hangupOnStar: exit conference when member press '*'
- *       (default false)
- *   action: redirect to this URL after leaving conference
- *   method: submit to 'action' url using GET or POST
- *   callbackUrl: url to request when call enters/leaves conference
- or has pressed digits matching (digitsMatch)
- *   callbackMethod: submit to 'callbackUrl' url using GET or POST
- *   digitsMatch: a list of matching digits to send with callbackUrl
- Can be a list of digits patterns separated by comma.
+/**
+* Conference Constructor
+*
+* Instatiates a new Conference object with room and optional attributes.
+* Possible attributes are:
+*   waitSound: sound to play while alone in conference
+*       (default no sound)
+*   muted: enter conference muted
+*       (default false)
+*   startConferenceOnEnter: the conference start when this member joins
+*       (default true)
+*   endConferenceOnExit: close conference after this member leaves
+*       (default false)
+*   maxMembers: max members in conference
+*       (0 for max : 200)
+*   enterSound: if "", disabled
+*       if beep:1, play one beep when a member enters
+*       if beep:2 play two beeps when a member enters
+*       (default "")
+*   exitSound: if "", disabled
+*       if beep:1, play one beep when a member exits
+*       if beep:2 play two beeps when a member exits
+*       (default "")
+*   timeLimit: max time before closing conference
+*       (default 14400 seconds)
+*   hangupOnStar: exit conference when member press '*'
+*       (default false)
+*   action: redirect to this URL after leaving conference
+*   method: submit to 'action' url using GET or POST
+*   callbackUrl: url to request when call enters/leaves conference
+        or has pressed digits matching (digitsMatch)
+*   callbackMethod: submit to 'callbackUrl' url using GET or POST
+*   digitsMatch: a list of matching digits to send with callbackUrl
+        Can be a list of digits patterns separated by comma.
 
- *
- * @param string $room Conference room to join
- * @param array $attr Optional attributes
- * @return Conference
- */
+*
+* @param string $room Conference room to join
+* @param array $attr Optional attributes
+* @return Conference
+*/
 /*
- function __construct($room = '', $attr = array()){
- parent::__construct($room, $attr);
- }
+     function __construct($room = '', $attr = array()){
+        parent::__construct($room, $attr);
+     }
 
- }*/
+}*/
 /**
  * The <GetSpeech> element collects speech from caller voice
  * If no input is received before timeout, <GetSpeech> falls through to the
@@ -993,9 +1002,17 @@ class Number extends Element {
  */
 class GetSpeech extends Element {
 
-  protected $valid = array('action', 'method', 'timeout', 'engine', 'grammar', 'playBeep');
+  protected $valid = array(
+    'action',
+    'method',
+    'timeout',
+    'engine',
+    'grammar',
+    'playBeep'
+  );
 
   protected $nesting = array('Speak', 'Play', 'Wait');
+
   /**
    * GetSpeech Constructor
    * @param array $attr Optional attributes
@@ -1006,13 +1023,22 @@ class GetSpeech extends Element {
   }
 
 }
+
 /**
  * The <PreAnswer> element answers the call in early media mode.
  */
 class PreAnswer extends Element {
   protected $valid = array();
 
-  protected $nesting = array('Speak', 'Play', 'Wait', 'GetDigits', 'GetSpeech', 'Redirect', 'SIPTransfer');
+  protected $nesting = array(
+    'Speak',
+    'Play',
+    'Wait',
+    'GetDigits',
+    'GetSpeech',
+    'Redirect',
+    'SIPTransfer'
+  );
 
   function __construct($attr = array()) {
     parent::__construct($attr);
@@ -1040,7 +1066,7 @@ class PlivoUtils {
 
     // append them to the data string in order
     // with no delimiters
-    foreach ($data as $key => $value) {
+    foreach ($data AS $key => $value) {
       $url .= "$key$value";
     }
 
@@ -1048,7 +1074,7 @@ class PlivoUtils {
     // passed in
     // Note: hash_hmac requires PHP 5 >= 5.1.2 or PECL hash:1.1-1.5
     // Or http://pear.php.net/package/Crypt_HMAC/
-    $calculated_signature = base64_encode(hash_hmac("sha1", $url, $this->AuthToken, true));
+    $calculated_signature = base64_encode(hash_hmac("sha1", $url, $this->AuthToken, TRUE));
 
     return $calculated_signature == $expected_signature;
 
@@ -1057,6 +1083,3 @@ class PlivoUtils {
 }
 
 ?>
-
-
-

@@ -28,46 +28,6 @@ class VoipTwilioServer extends VoipServer {
     parent::__construct($id, $name, $config_form);
   }
 
-
-  /*
-   * Public methods
-   */
-
-  static function getVoicesList() {
-    $voices_available = self::_get_available_voices();
-    $list = array();
-    foreach ($voices_available as $id => $voice) {
-      $list[$id] = $voice['description'];
-    }
-    asort($list);
-    return $list;
-  }
-
-  /**
-   * Implementation of VoipServer() API method
-   */
-  function getDefaultLanguage() {
-    $voice = VoipVoice::getDefaultVoice();
-    return $voice->getLanguage();
-    /* $voices_available = self::_get_available_voices();
-     $voice_descriptor = $voices_available[$voice_id];
-     $voice = $voice_descriptor['language'];
-     return $voice;*/
-  }
-
-  /**
-   * Implementation of VoipServer() API method
-   */
-  function getDefaultVoice() {
-    $voice = VoipVoice::getDefaultVoice();
-    return $voice->getGender();
-    /* $voices_available = self::_get_available_voices();
-     $voice_descriptor = $voices_available[$voice_id];
-     $voice = $voice_descriptor['voice'];
-     return $voice;*/
-  }
-
-
   /*
    * API methods
    */
@@ -76,7 +36,6 @@ class VoipTwilioServer extends VoipServer {
    * Implementation of the VoipServer dial() API method
    */
   function dial($voipcall, $server_config = NULL) {
-
     $rc = FALSE;
     voip_error_reset();
 
@@ -88,26 +47,40 @@ class VoipTwilioServer extends VoipServer {
     $api_version = '2010-04-01';
     $account_sid = $server_config['voiptwilio_account_sid'];
     $auth_token = $server_config['voiptwilio_auth_token'];
-
-    // Update call variables
-    $voipcall->setSource('drupal');
-    $voipcall->setDirection(VoipCall::OUTBOUND);
-
-    // save the call in order to get generate an cid
-    $voipcall->save();
-
-    // Instantiate a new Twilio Rest Client
-    $client = new TwilioRestClient($account_sid, $auth_token);
-
-    // Initiate a new outbound call by POST'ing to the Calls resource
-    $twilio_path = "/$api_version/Accounts/$account_sid/Calls";
+	
+	
     $caller_number = ($voipcall->getCallerNumber())
-                       ? $voipcall->getCallerNumber()
-                       : variable_get('voipcall_cid_number', NULL);
+      ? $voipcall->getCallerNumber()
+      : variable_get('voipcall_cid_number', NULL);
     $dest_number = $voipcall->getDestNumber();
 
-    $menu_path = 'voip/twilio/callhandler';
-    $cid = $voipcall->getCid();
+	// (re)start the session associated with the call
+    $voip_session = VoipSession::getSessionByNumber($caller_number, $dest_number);
+    if ($voip_session) {
+      $voip_session->resetTimer();
+	   //we must preserve cid
+	  $cid = $voip_session->getCid();
+	  //load existing call
+	  $voipcall = VoipCall::load($cid);
+    }
+    else {
+      $voip_session = new VoipSession();
+      $voip_session->setOriginNumber($caller_number);
+      $voip_session->setDestinationNumber($dest_number);
+	  
+	  // Update call variables
+      $voipcall->setSource('drupal');
+      $voipcall->setDirection(VoipCall::OUTBOUND);
+	  $voipcall->save();
+      $cid = $voipcall->getCid();
+	  $voip_session->setCid($cid);
+    }
+    $voip_session->save();
+    
+    //$cid = $voipcall->getCid();
+	// Initiate a new outbound call by POST'ing to the Calls resource
+	$twilio_path = "/$api_version/Accounts/$account_sid/Calls";
+	$menu_path = 'voip/twilio/callhandler';
     $response_url = $menu_path . '/process_outbound_calls/' . $cid;
     $call_handler_url = url($response_url, array('absolute' => TRUE));
     $response_url = $menu_path . '/process_hangup/' . $cid;
@@ -120,18 +93,22 @@ class VoipTwilioServer extends VoipServer {
       'Method' => 'POST',
       'StatusCallback' => $status_callback_url,
       'StatusCallbackMethod' => 'POST',
-      'SendDigits' => '', // TODO: shall we encode extra digits with dest_number?
-      'Timeout' => 60, // TODO: Set to 15 in order to avoid answering machines?
+      'SendDigits' => '',
+      // TODO: shall we encode extra digits with dest_number?
+      'Timeout' => 60
+      // TODO: Set to 15 in order to avoid answering machines?
     );
 
     // Handle answering machine options
     if ($voipcall->getCheckMachine() == TRUE) {
-      // TODO: do we need to implement Twilio's 'hangup on machine' option here?
+// TODO: do we need to implement Twilio's 'hangup on machine' option here?
       // Note: adding any value in here -- even 'Continue' -- adds a 5 sec delay
-//       to the call. To prevent that, 'IfMachine' has to be NULL
+      //       to the call. To prevent that, 'IfMachine' has to be NULL
       $vars['IfMachine'] = 'Continue';
     }
-
+	
+	// Instantiate a new Twilio Rest Client
+    $client = new TwilioRestClient($account_sid, $auth_token);
     $response = $client->request($twilio_path, "POST", $vars);
 
     // update call based on response
@@ -140,7 +117,7 @@ class VoipTwilioServer extends VoipServer {
       $twilio_error_code = (string) $response->ResponseXml->RestException->Code;
       switch ($twilio_error_code) {
         // the following codes are listed in
-//   http://www.twilio.com/docs/errors/reference/
+        //   http://www.twilio.com/docs/errors/reference/
         case '13214': // Dial: Invalid callerId value
         case '21210': // Caller phone number not verified
         case '21212': // Invalid Caller Phone Number
@@ -159,7 +136,7 @@ class VoipTwilioServer extends VoipServer {
           $voipcall->setCallStatus(VoipCall::ERROR);
           $voipcall->save();
           break;
-        case '13225': // Dial: Forbidden phone number 
+        case '13225': // Dial: Forbidden phone number
         case '21215': // Account not authorized to call NNN
           $error_msg = t('Forbidden phone number');
           $voipcall->setErrorMessage($error_msg);
@@ -171,7 +148,7 @@ class VoipTwilioServer extends VoipServer {
           $msg = "Processing failure. Please contact your system's administrator. Twilio error @twilio_code: @twilio_msg";
           $params = array(
             '@twilio_code' => $twilio_error_code,
-            '@twilio_msg' => $twilio_error_msg,
+            '@twilio_msg' => $twilio_error_msg
           );
           $voipcall->report_error('voiptwilio', $msg, $params);
           break;
@@ -188,8 +165,6 @@ class VoipTwilioServer extends VoipServer {
       $voipcall->setCallId($call_id);
       $voipcall = voiptwilio_update_call_status($voipcall, $twilio_call_status);
       $voipcall->save();
-
-      watchdog('voiptwilio', 'new call: ' . print_r($voipcall, true));
     }
 
     return $rc;
@@ -202,26 +177,54 @@ class VoipTwilioServer extends VoipServer {
     $rc = FALSE;
     voip_error_reset();
 
-    //Determine from/to numbers
+    // determine from/to numbers
     if ($reply) {
       $to = $voipcall->getCallerNumber();
-      $from = ($voipcall->getDestNumber())
-                       ? $voipcall->getDestNumber()
-                       : variable_get('voipcall_cid_number', NULL);
+      $from = $voipcall->getDestNumber();
+      if (!isset($from)) {
+        $voipcall->report_error('voiptwilio', "Attempt to send a text message reply with no caller number.");
+        return FALSE;
+      }
     }
     else {
       $to = $voipcall->getDestNumber();
       $from = ($voipcall->getCallerNumber())
-                       ? $voipcall->getCallerNumber()
-                       : variable_get('voipcall_cid_number', NULL);
+        ? $voipcall->getCallerNumber()
+        : variable_get('voipcall_cid_number', NULL);
     }
 
+    // (re)start the session associated with the call
+    $voip_session = VoipSession::getSessionByNumber($from, $to);
+    if ($voip_session) {
+      $voip_session->resetTimer();
+	  $cid = $voip_session->getCid();
+	  //load existing call
+	  $voipcall = VoipCall::load($cid);
+    }
+    else {
+      $voip_session = new VoipSession();
+      $voip_session->setOriginNumber($from);
+      $voip_session->setDestinationNumber($to);
+	  
+	  // update call variables
+      $voipcall->setSource('drupal');
+      $voipcall->setDirection(VoipCall::OUTBOUND);
+      $voipcall->setCurrentChannel('text');
+      $voipcall->setCurrentNetwork('sms');
+	  $voipcall->save();
+      $cid = $voipcall->getCid();
+	  $voip_session->setCid($cid);
+    }
+    //$voip_session->setCid($voipcall->getCid());
+    $voip_session->save();
+
+    // send the sms
     if (voipscript_use_sms_framework()) {
       //Use SMS Framework to send SMS message if user enabled this option
       voipscript_send_sms_framework($to, $text);
       return TRUE;
     }
-    //Else use VoIP Drupal:
+    // else use VoIP Drupal
     if (!$server_config) {
       $server_config = $this->getConfig();
     }
@@ -231,20 +234,13 @@ class VoipTwilioServer extends VoipServer {
     $account_sid = $server_config['voiptwilio_account_sid'];
     $auth_token = $server_config['voiptwilio_auth_token'];
 
-    // Update call variables
-    $voipcall->setSource('drupal');
-    $voipcall->setDirection(VoipCall::OUTBOUND);
-
-    // save the call
-    $voipcall->save();
-
     // Instantiate a new Twilio Rest Client
     $client = new TwilioRestClient($account_sid, $auth_token);
 
     // Initiate a new outbound text by POST'ing to the SMS/Messages resource
     $twilio_path = "/$api_version/Accounts/$account_sid/SMS/Messages";
     $menu_path = 'voip/twilio/callhandler';
-    $cid = $voipcall->getCid();
+    //$cid = $voipcall->getCid();
     $response_url = $menu_path . '/process_sms_callback/' . $cid;
     $status_callback_url = url($response_url, array('absolute' => TRUE));
 
@@ -264,7 +260,7 @@ class VoipTwilioServer extends VoipServer {
       $twilio_error_code = (string) $response->ResponseXml->RestException->Code;
       switch ($twilio_error_code) {
         // the following codes are listed in
-//   http://www.twilio.com/docs/errors/reference/
+        //   http://www.twilio.com/docs/errors/reference/
         case '13214': // Dial: Invalid callerId value
         case '21210': // Caller phone number not verified
         case '21212': // Invalid Caller Phone Number
@@ -283,7 +279,7 @@ class VoipTwilioServer extends VoipServer {
           $voipcall->setCallStatus(VoipCall::ERROR);
           $voipcall->save();
           break;
-        case '13225': // Dial: Forbidden phone number 
+        case '13225': // Dial: Forbidden phone number
         case '21215': // Account not authorized to call NNN
           $error_msg = t('Forbidden phone number');
           $voipcall->setErrorMessage($error_msg);
@@ -295,7 +291,7 @@ class VoipTwilioServer extends VoipServer {
           $msg = "Processing failure. Please contact your system's administrator. Twilio error @twilio_code: @twilio_msg";
           $params = array(
             '@twilio_code' => $twilio_error_code,
-            '@twilio_msg' => $twilio_error_msg,
+            '@twilio_msg' => $twilio_error_msg
           );
           $voipcall->report_error('voiptwilio', $msg, $params);
           break;
@@ -312,8 +308,6 @@ class VoipTwilioServer extends VoipServer {
       $voipcall->setCallId($call_id);
       $voipcall = voiptwilio_update_call_status($voipcall, $twilio_call_status);
       $voipcall->save();
-
-      watchdog('voiptwilio', 'new text: ' . print_r($voipcall, true));
     }
 
     return $rc;
@@ -323,9 +317,11 @@ class VoipTwilioServer extends VoipServer {
    * Implementation of the VoipServer hangup() API method
    */
   function hangup($voipcall, $server_config = NULL) {
-    $id = $voipcall->getCallId();
-    $status = $voipcall->getCallStatus();
-    watchdog('voiptwilio', "in hangup() with call id: $id and status: $status");
+    if (voip_debug()) {
+      $id = $voipcall->getCallId();
+      $status = $voipcall->getCallStatus();
+      watchdog('voiptwilio', "in hangup() with call id: $id and status: $status");
+    }
 
     $rc = FALSE;
     voip_error_reset();
@@ -447,46 +443,22 @@ class VoipTwilioServer extends VoipServer {
 
   static function _get_available_voices() {
     $voices = array();
-    $voices['dave'] = array(
-      'language' => 'en',
-      'voice' => 'man',
-      'description' => t('Dave (male voice in English)'),
-    );
-    $voices['allison'] = array(
-      'language' => 'en',
-      'voice' => 'woman',
-      'description' => t('Allison (female voice in English)'),
-    );
-    $voices['jorge'] = array(
-      'language' => 'es',
-      'voice' => 'man',
-      'description' => t('Jorge (male voice in Spanish)'),
-    );
-    $voices['carmen'] = array(
-      'language' => 'es',
-      'voice' => 'woman',
-      'description' => t('Carmen (female voice in Spanish)'),
-    );
-    $voices['bernard'] = array(
-      'language' => 'fr',
-      'voice' => 'man',
-      'description' => t('Bernard (male voice in French)'),
-    );
-    $voices['florence'] = array(
-      'language' => 'fr',
-      'voice' => 'woman',
-      'description' => t('Florence (female voice in French)'),
-    );
-    $voices['stefan'] = array(
-      'language' => 'de',
-      'voice' => 'man',
-      'description' => t('Stefan (male voice in German)'),
-    );
-    $voices['katrin'] = array(
-      'language' => 'de',
-      'voice' => 'woman',
-      'description' => t('Katrin (female voice in German)'),
-    );
+    $voices['dave-twilio'] = array('language' => 'en', 'voice' => 'man',
+                        'description' => t('Dave (male voice in English)'));
+    $voices['allison-twilio'] = array('language' => 'en', 'voice' => 'woman',
+                        'description' => t('Allison (female voice in English)'));
+    $voices['jorge-twilio'] = array('language' => 'es', 'voice' => 'man',
+                        'description' => t('Jorge (male voice in Spanish)'));
+    $voices['carmen-twilio'] = array('language' => 'es', 'voice' => 'woman',
+                        'description' => t('Carmen (female voice in Spanish)'));
+    $voices['bernard-twilio'] = array('language' => 'fr', 'voice' => 'man',
+                        'description' => t('Bernard (male voice in French)'));
+    $voices['florence-twilio'] = array('language' => 'fr', 'voice' => 'woman',
+                        'description' => t('Florence (female voice in French)'));
+    $voices['stefan-twilio'] = array('language' => 'de', 'voice' => 'man',
+                        'description' => t('Stefan (male voice in German)'));
+    $voices['katrin-twilio'] = array('language' => 'de', 'voice' => 'woman',
+                        'description' => t('Katrin (female voice in German)'));
     return $voices;
   }
 }

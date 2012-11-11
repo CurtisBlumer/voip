@@ -76,9 +76,6 @@ function _voipscriptsamples_get_weather_report() {
  * Return string with weather report for given zip code
  */
 function _voipscriptsamples_get_forecast($zip) {
-
-  watchdog('forecast', "zip: $zip");
-
   $forecast = NULL;
 
   $woeid = _voipscriptsamples_getWoeidFromZip($zip);
@@ -115,7 +112,7 @@ function _voipscriptsamples_get_forecast($zip) {
  */
 
 function _voipscriptsamples_get_weather_info($woeid, $unit = 'f') {
-  require_once DRUPAL_ROOT . '/' . 'class.xml.parser.php';
+  require_once('class.xml.parser.php');
 
   $yahoo_url = "http://weather.yahooapis.com/forecastrss?w=$woeid&u=$unit";
   $yahoo_ns = "http://xml.weather.yahoo.com/ns/rss/1.0";
@@ -176,7 +173,7 @@ function _voipscriptsamples_get_weather_info($woeid, $unit = 'f') {
 function _voipscriptsamples_getWoeidFromZip($zip) {
   static $woeidFromZip = array();
 
-  $woeid = $woeidFromZip[$zip];
+  $woeid = isset($woeidFromZip[$zip]) ? $woeidFromZip[$zip] : NULL;
 
   if (!$woeid) {
     $q = "select woeid from geo.places where text='$zip' limit 1";

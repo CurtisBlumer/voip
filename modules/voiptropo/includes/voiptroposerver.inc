@@ -12,9 +12,9 @@
  * File dependencies
  */
 
-module_load_include('inc', 'voip', 'includes/voipserver');
+/*module_load_include('inc', 'voip', 'includes/voipserver');
 module_load_include('inc', 'voipcall', 'voipcall');
-
+*/
 
 /**
  * Class definitions
@@ -38,29 +38,6 @@ class VoipTropoServer extends VoipServer {
    * Public methods
    */
 
-  static function getVoicesList() {
-    $voices_available = self::_get_available_voices();
-    $list = array();
-    foreach ($voices_available as $id => $voice) {
-      $list[$id] = $voice['description'];
-    }
-    asort($list);
-    return $list;
-  }
-
-  /**
-   * Returns the Tropo id associated with the given $voice and $language
-   */
-  static function getVoiceId($voice, $language) {
-    $voices = VoipTropoServer::_get_available_voices();
-    foreach ($voices as $key => $voice_array) {
-      if ($voice_array['language'] == $language && $voice_array['voice'] == $voice) {
-        return $key;
-      }
-    }
-    return NULL;
-  }
-
   /**
    * Returns the Tropo Voice Region id associated with the given $voice and $language
    */
@@ -74,27 +51,6 @@ class VoipTropoServer extends VoipServer {
     return NULL;
   }
 
-  /**
-   * Implementation of VoipServer() API method
-   */
-  function getDefaultLanguage() {
-    $voice = VoipVoice::getDefaultVoice();
-    return $voice->getLanguage();
-    /*$voices_available = self::_get_available_voices();
-     $voice_descriptor = $voices_available[$voice_id];
-     $voice = $voice_descriptor['language'];
-     return $voice;*/
-  }
-
-  /**
-   * Implementation of VoipServer() API method
-   */
-  function getDefaultVoice() {
-    $voice_id = VoipVoice::getDefaultVoice()->getVoiceId();
-    return $voice_id;
-  }
-
-
   /*
    * API methods
    */
@@ -103,35 +59,51 @@ class VoipTropoServer extends VoipServer {
    * Implementation of the VoipServer dial() API method
    */
   function dial($voipcall, $server_config = NULL) {
-
     voip_error_reset();
 
     if (!$server_config) {
       $server_config = $this->getConfig();
     }
+	
+	$caller_number = ($voipcall->getCallerNumber())
+      ? $voipcall->getCallerNumber()
+      : variable_get('voipcall_cid_number', NULL);
+    $dest_number = $voipcall->getDestNumber();
 
-    // tropo configuration
+    // (re)start the session associated with the call
+    $voip_session = VoipSession::getSessionByNumber($caller_number, $dest_number);
+    if ($voip_session) {
+      $voip_session->resetTimer();
+	  //we must preserve cid
+	  $cid = $voip_session->getCid();
+	  //load existing call
+	  $voipcall = VoipCall::load($cid);
+    }
+    else {
+      $voip_session = new VoipSession();
+      $voip_session->setOriginNumber($caller_number);
+      $voip_session->setDestinationNumber($dest_number);
+	  
+	  // update call variables
+	  $voipcall->setCallerNumber($caller_number);
+      $voipcall->setSource('drupal');
+      $voipcall->setDirection(VoipCall::OUTBOUND);
+      $voipcall->setCurrentChannel('voice');
+      $voipcall->setCurrentNetwork('voip');
+	  $voipcall->save();
+      $cid = $voipcall->getCid();
+	  $voip_session->setCid($cid);
+    }
+    $voip_session->save();
+	
+	 // tropo configuration
     $username = $server_config['voiptropo_account_username'];
     $password = $server_config['voiptropo_account_password'];
     $token = $server_config['voiptropo_voice_token'];
 
-    // Update call variables
-    $voipcall->setSource('drupal');
-    $voipcall->setDirection(VoipCall::OUTBOUND);
-
-    // save the call in order to get generate an cid
-    $voipcall->save();
-
     // Instantiate a new tropo Rest Client
     $client = new SessionAPI();
-    $caller_number = ($voipcall->getCallerNumber())
-                       ? $voipcall->getCallerNumber()
-                       : variable_get('voipcall_cid_number', NULL);
-    $voipcall->setCallerNumber($caller_number);
-    $dest_number = $voipcall->getDestNumber();
-
-    //$menu_path = 'voip/tropo/callhandler';
-    $cid = $voipcall->getCid();
+    //$cid = $voipcall->getCid();
 
     $vars = array(
       'action' => 'create',
@@ -143,29 +115,17 @@ class VoipTropoServer extends VoipServer {
       'cid' => $cid,
     );
 
-    //TODO: TZ:What is this?
-    // Handle answering machine options
-    /*if($voipcall->getCheckMachine() == TRUE) {
-     // TODO: do we need to implement tropo's 'hangup on machine' option here?
-     // Note: adding any value in here -- even 'Continue' -- adds a 5 sec delay
-     //       to the call. To prevent that, 'IfMachine' has to be NULL
-     $vars['IfMachine'] = 'Continue';
-     }
-     */
+    //@todo: Handle answering machine options
+    
     try {
       $response = $client->createSession($token, $vars);
     }
     catch (Exception $e) {
-      $msg = "Processing failure. Please contact your system's administrator.";
+      $msg = "Processing failure. Function voip_dial() failed with the following exception: " . $e->getMessage();
       $voipcall->report_error('voiptropo', $msg);
-      //$voipcall->setErrorMessage($error_msg);
-      $voipcall->setCallStatus(VoipCall::ERROR);
-      $voipcall->save();
       return FALSE;
     }
     // Else:
-    $voipcall->save();
-    watchdog('voiptropo', 'new call: ' . print_r($voipcall, TRUE));
     return TRUE;
   }
 
@@ -175,22 +135,53 @@ class VoipTropoServer extends VoipServer {
   function send_text($text, $voipcall, $reply = FALSE, $server_config = NULL) {
     voip_error_reset();
 
-    //Determine from/to numbers
+    //determine from/to numbers
     if ($reply) {
       $to = $voipcall->getCallerNumber();
       $from = $voipcall->getDestNumber();
+	  if (!isset($from)) {
+        $voipcall->report_error('voiptropo', "Attempt to send a text message reply with no caller number.");
+        return FALSE;
+      }
     }
     else {
       $to = $voipcall->getDestNumber();
-      $from = $voipcall->getCallerNumber();
+      $from = ($voipcall->getCallerNumber())
+        ? $voipcall->getCallerNumber()
+        : variable_get('voipcall_cid_number', NULL);
     }
+	
+    // (re)start the session associated with the call
+    $voip_session = VoipSession::getSessionByNumber($from, $to);
+    if ($voip_session) {
+      $voip_session->resetTimer();
+	  //we must preserve cid
+	  $cid = $voip_session->getCid();
+	  //load existing call
+	  $voipcall = VoipCall::load($cid);
+    }
+    else {
+      $voip_session = new VoipSession();
+      $voip_session->setOriginNumber($from);
+      $voip_session->setDestinationNumber($to);
+	  
+	  // update call variables
+      $voipcall->setSource('drupal');
+      $voipcall->setDirection(VoipCall::OUTBOUND);
+      $voipcall->setCurrentChannel('text');
+      $voipcall->setCurrentNetwork('sms');
+	  $voipcall->save();
+      $cid = $voipcall->getCid();
+	  $voip_session->setCid($cid);
+    }
+    $voip_session->save();
 
     if (voipscript_use_sms_framework()) {
-      //Use SMS Framework to send SMS message if user enabled this option
+      //use SMS Framework to send SMS message if user enabled this option
       voipscript_send_sms_framework($to, $text);
       return TRUE;
     }
-    //Else use VoIP Drupal:
+    //else use VoIP Drupal:
     if (!$server_config) {
       $server_config = $this->getConfig();
     }
@@ -199,14 +190,6 @@ class VoipTropoServer extends VoipServer {
     $username = $server_config['voiptropo_account_username'];
     $password = $server_config['voiptropo_account_password'];
     $token = $server_config['voiptropo_sms_token'];
-
-    // Update call variables
-    $voipcall->setSource('drupal');
-    $voipcall->setDirection(VoipCall::OUTBOUND);
-
-    // save the call
-    $voipcall->save();
-    $cid = $voipcall->getCid();
 
     // Instantiate a new tropo Rest Client
     $client = new SessionAPI();
@@ -226,15 +209,11 @@ class VoipTropoServer extends VoipServer {
       $response = $client->createSession($token, $vars);
     }
     catch (Exception $e) {
-      $msg = "Processing failure. Please contact your system's administrator.";
+      $msg = "Processing failure. Function voip_text() failed with the following exception: " . $e->getMessage();
       $voipcall->report_error('voiptropo', $msg);
-      $voipcall->setCallStatus(VoipCall::ERROR);
-      $voipcall->save();
       return FALSE;
     }
     // Else:
-    $voipcall->save();
-    watchdog('voiptropo', 'new text: ' . print_r($voipcall, TRUE));
     return TRUE;
   }
 
@@ -242,10 +221,12 @@ class VoipTropoServer extends VoipServer {
    * Implementation of the VoipServer hangup() API method
    */
   function hangup($voipcall, $server_config = NULL) {
-    $id = $voipcall->getCallId();
-    $status = $voipcall->getCallStatus();
-    watchdog('voiptropo', "in hangup() with call id: $id and status: $status");
-
+    if (voip_debug()) {
+      $id = $voipcall->getCallId();
+      $status = $voipcall->getCallStatus();
+      watchdog('voiptropo', "in hangup() with call id: $id and status: $status");
+    }
+	
     $rc = FALSE;
     voip_error_reset();
 
@@ -256,7 +237,7 @@ class VoipTropoServer extends VoipServer {
     // tropo configuration
     $username = $server_config['voiptropo_account_username'];
     $password = $server_config['voiptropo_account_password'];
-    $token = $server_config['voiptropo_voice_token'];
+    //$token = $server_config['voiptropo_voice_token'];
 
     // Instantiate a new Tropo Event API
     $client = new EventAPI($username, $password);
