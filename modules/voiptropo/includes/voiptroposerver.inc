@@ -64,7 +64,7 @@ class VoipTropoServer extends VoipServer {
     if (!$server_config) {
       $server_config = $this->getConfig();
     }
-	
+
 	$caller_number = ($voipcall->getCallerNumber())
       ? $voipcall->getCallerNumber()
       : variable_get('voipcall_cid_number', NULL);
@@ -83,7 +83,7 @@ class VoipTropoServer extends VoipServer {
       $voip_session = new VoipSession();
       $voip_session->setOriginNumber($caller_number);
       $voip_session->setDestinationNumber($dest_number);
-	  
+
 	  // update call variables
 	  $voipcall->setCallerNumber($caller_number);
       $voipcall->setSource('drupal');
@@ -95,7 +95,7 @@ class VoipTropoServer extends VoipServer {
 	  $voip_session->setCid($cid);
     }
     $voip_session->save();
-	
+
 	 // tropo configuration
     $username = $server_config['voiptropo_account_username'];
     $password = $server_config['voiptropo_account_password'];
@@ -116,7 +116,7 @@ class VoipTropoServer extends VoipServer {
     );
 
     //@todo: Handle answering machine options
-    
+
     try {
       $response = $client->createSession($token, $vars);
     }
@@ -138,7 +138,7 @@ class VoipTropoServer extends VoipServer {
     //determine from/to numbers
     if ($reply) {
       $to = $voipcall->getCallerNumber();
-      $from = $voipcall->getDestNumber();
+      $from = ($voipcall->getDestNumber()) ? $voipcall->getDestNumber() :variable_get('voipcall_cid_number', NULL);;
 	  if (!isset($from)) {
         $voipcall->report_error('voiptropo', "Attempt to send a text message reply with no caller number.");
         return FALSE;
@@ -150,7 +150,7 @@ class VoipTropoServer extends VoipServer {
         ? $voipcall->getCallerNumber()
         : variable_get('voipcall_cid_number', NULL);
     }
-	
+
     // (re)start the session associated with the call
     $voip_session = VoipSession::getSessionByNumber($from, $to);
     if ($voip_session) {
@@ -164,7 +164,7 @@ class VoipTropoServer extends VoipServer {
       $voip_session = new VoipSession();
       $voip_session->setOriginNumber($from);
       $voip_session->setDestinationNumber($to);
-	  
+
 	  // update call variables
       $voipcall->setSource('drupal');
       $voipcall->setDirection(VoipCall::OUTBOUND);
@@ -226,7 +226,7 @@ class VoipTropoServer extends VoipServer {
       $status = $voipcall->getCallStatus();
       watchdog('voiptropo', "in hangup() with call id: $id and status: $status");
     }
-	
+
     $rc = FALSE;
     voip_error_reset();
 
@@ -275,12 +275,12 @@ class VoipTropoServer extends VoipServer {
     $request_url = $menu_path . '/process_inbound_calls/';
     $url = url($request_url, array('absolute' => TRUE));
 
-    $server_config = $this->getConfig();
     $length = 20;
     $characters = '0123456789abcdefghijklmnopqrstuvwxyz';
     $random_string = '';
+    $characters_len = strlen($characters) - 1;
     for ($p = 0; $p < $length; $p++) {
-      $random_string .= $characters[mt_rand(0, strlen($characters))];
+      $random_string .= $characters[mt_rand(0, $characters_len)];
     }
     $vars->session->id =  $random_string;
     $vars->session->initialText =  $text_content;
@@ -294,7 +294,7 @@ class VoipTropoServer extends VoipServer {
 
     //set the url, number of POST vars, POST data
     curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_HTTPHEADERS, array('Content-Type: application/json'));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
     curl_setopt($ch, CURLOPT_POST, 1);
     curl_setopt($ch, CURLOPT_POSTFIELDS, array('json' => json_serialize($vars)));
     //curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

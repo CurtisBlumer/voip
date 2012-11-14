@@ -47,8 +47,8 @@ class VoipTwilioServer extends VoipServer {
     $api_version = '2010-04-01';
     $account_sid = $server_config['voiptwilio_account_sid'];
     $auth_token = $server_config['voiptwilio_auth_token'];
-	
-	
+
+
     $caller_number = ($voipcall->getCallerNumber())
       ? $voipcall->getCallerNumber()
       : variable_get('voipcall_cid_number', NULL);
@@ -67,7 +67,7 @@ class VoipTwilioServer extends VoipServer {
       $voip_session = new VoipSession();
       $voip_session->setOriginNumber($caller_number);
       $voip_session->setDestinationNumber($dest_number);
-	  
+
 	  // Update call variables
       $voipcall->setSource('drupal');
       $voipcall->setDirection(VoipCall::OUTBOUND);
@@ -76,7 +76,7 @@ class VoipTwilioServer extends VoipServer {
 	  $voip_session->setCid($cid);
     }
     $voip_session->save();
-    
+
     //$cid = $voipcall->getCid();
 	// Initiate a new outbound call by POST'ing to the Calls resource
 	$twilio_path = "/$api_version/Accounts/$account_sid/Calls";
@@ -106,7 +106,7 @@ class VoipTwilioServer extends VoipServer {
       //       to the call. To prevent that, 'IfMachine' has to be NULL
       $vars['IfMachine'] = 'Continue';
     }
-	
+
 	// Instantiate a new Twilio Rest Client
     $client = new TwilioRestClient($account_sid, $auth_token);
     $response = $client->request($twilio_path, "POST", $vars);
@@ -180,7 +180,9 @@ class VoipTwilioServer extends VoipServer {
     // determine from/to numbers
     if ($reply) {
       $to = $voipcall->getCallerNumber();
-      $from = $voipcall->getDestNumber();
+      $from = ($voipcall->getDestNumber())
+        ? $voipcall->getDestNumber()
+        : variable_get('voipcall_cid_number', NULL);
       if (!isset($from)) {
         $voipcall->report_error('voiptwilio', "Attempt to send a text message reply with no caller number.");
         return FALSE;
@@ -188,9 +190,7 @@ class VoipTwilioServer extends VoipServer {
     }
     else {
       $to = $voipcall->getDestNumber();
-      $from = ($voipcall->getCallerNumber())
-        ? $voipcall->getCallerNumber()
-        : variable_get('voipcall_cid_number', NULL);
+      $from = $voipcall->getCallerNumber();
     }
 
     // (re)start the session associated with the call
@@ -205,7 +205,7 @@ class VoipTwilioServer extends VoipServer {
       $voip_session = new VoipSession();
       $voip_session->setOriginNumber($from);
       $voip_session->setDestinationNumber($to);
-	  
+
 	  // update call variables
       $voipcall->setSource('drupal');
       $voipcall->setDirection(VoipCall::OUTBOUND);

@@ -159,7 +159,9 @@ class VoipPlivoFrameworkServer extends VoipServer {
     // determine from/to numbers
     if ($reply) {
       $to = $voipcall->getCallerNumber();
-      $from = $voipcall->getDestNumber();
+      $from = ($voipcall->getDestNumber())
+        ? $voipcall->getDestNumber()
+        : variable_get('voipcall_cid_number', NULL);
       if (!isset($from)) {
         $voipcall->report_error('voipplivoframework', "Attempt to send a text message reply with no caller number.");
         return FALSE;

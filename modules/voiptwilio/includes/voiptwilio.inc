@@ -49,7 +49,7 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
     watchdog('voiptwilio', $msg, $params, WATCHDOG_WARNING);
     return FALSE; // TODO: should we return an error response to the server?
   }
-  
+
   // determine channel, network, to and from attributes
   if ($twilio_action == 'process_inbound_text') {
     if (isset($_REQUEST['Channel'])) {
@@ -148,7 +148,7 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
       }
     }
   }
-  
+
   // update common call variables
   if (!$call->getCurrentChannel()) {
     $call->setCurrentChannel($channel);
@@ -182,7 +182,7 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
 
   // update call status
   // NOTE: sms callbacks do not have a call status associated with them
-  // NOTE: when the user hangs up during a recording, Twilio sends the record 
+  // NOTE: when the user hangs up during a recording, Twilio sends the record
   // response with the recording data AND CallStatus set to 'completed'. Once that is done,
   // Twilio calls our process_hangup url to inform, once again, that the call has been hanged.
 
@@ -198,7 +198,7 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
   else {
     $call = voiptwilio_update_call_status($call, $twilio_call_status);
   }
-  
+
   // save the call and initialize its script before setting internal variables
   $call->save();
 
@@ -312,7 +312,7 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
 
   // update the voipcall with the new values
   $call = $call->save();
-  
+
   // update the call session object
   $cid = $call->getCid();
   if (!$voip_session->getCid()) {
@@ -340,13 +340,13 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
       $res = call_user_func_array($text_handler, array($message, $call->getCallerNumber(), $call->getDestNumber(), $call, $call->getCurrentNetwork()));
       return;
     }
-    else if ($call->getCallChannel() != 'text') {
+    else if (!in_array($call->getCallChannel(),array('text', 'offline_text'))) {
       return;
     }
   }
   // process the call script
   $rc = _voiptwilio_script_handler($call);
-  
+
   // If global user has been replaced for call user.
   // Process shouldn't go further, so just for good practice.
   if(! empty($stored_user)) {
@@ -412,7 +412,7 @@ function _voiptwilio_script_handler($call) {
     if (!$cmd) {
       $processing = FALSE;
 
-      // no more commands to be processed    
+      // no more commands to be processed
       $stack_level = $script->getStackLevel();
       if ($stack_level > 0) {
         //return to previous stack
@@ -635,7 +635,7 @@ function _voiptwilio_script_handler($call) {
 //       supported by the VoIP Drupal API. In order to make those
 //       options available, the developer would have to extend the
 //       VoipScript class into something like VoipScriptTwilio.
-//       However, the specific commands of such class would not be 
+//       However, the specific commands of such class would not be
 //       supported by other VoIP servers.
           $call->setCallStatus(VoipCall::IN_PROGRESS);
           $menu_path = 'voip/twilio/callhandler';
@@ -776,7 +776,7 @@ function _voiptwilio_script_handler($call) {
           break;
 
         case 'VoipCmdSendText':
-          $call->setCallStatus(VoipCall::IN_PROGRESS);   
+          $call->setCallStatus(VoipCall::IN_PROGRESS);
           $to = $script->evalString($cmd->getParam('to'));
           $text = $script->evalString($cmd->getParam('text'));
           $network = $script->evalString($cmd->getParam('network'));
@@ -816,7 +816,7 @@ function _voiptwilio_script_handler($call) {
             $callback_url = $menu_path . '/process_sms_callback/' . $cid;
             $callback = url($callback_url, array('absolute' => TRUE));
             $method = 'POST';
-          
+
             // Note: If no caller number provided, Twilio will automatically try
             //       to determine an appropriate value depending on whether the
             //       call is inbound or outbound. However, since that number might
@@ -824,8 +824,8 @@ function _voiptwilio_script_handler($call) {
             // Use the system's number as the default caller id
             $default_cid_number = variable_get('voipcall_cid_number', NULL);
             $caller_id = $script->evalString($cmd->getParam('caller_id',
-                                                         $default_cid_number)); 
-            $rc = TRUE;                                             
+                                                         $default_cid_number));
+            $rc = TRUE;
             switch(strtolower($network)){
               default:
                 $params = array('@network' => $network,
@@ -855,7 +855,7 @@ function _voiptwilio_script_handler($call) {
                 // being executed, set $processing to FALSE
                 $processing = FALSE;
                 break;
-            } 
+            }
           }
           break;
 
@@ -1191,7 +1191,7 @@ function _voiptwilio_transfer_file($url) {
   $dest = file_default_scheme() . '://' ;
   $filename = basename($url);
   $file_destination = file_destination($dest . $filename, FILE_EXISTS_RENAME);
-  $data = file_get_contents($url); 
+  $data = file_get_contents($url);
   $file = file_save_data($data, $file_destination);
   return $file;
 }

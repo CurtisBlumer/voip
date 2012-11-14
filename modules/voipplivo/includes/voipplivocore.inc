@@ -373,7 +373,7 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
       call_user_func_array($text_handler, array($message, $call->getCallerNumber(), $call->getDestNumber(), $call, $call->getCurrentNetwork()));
       return;
     }
-    else if($call->getCallChannel() != 'text') {
+    else if(!in_array($call->getCallChannel(),array('text', 'offline_text'))) {
       return;
     }
   }
