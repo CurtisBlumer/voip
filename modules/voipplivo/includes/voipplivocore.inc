@@ -96,7 +96,6 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
     $call = VoipCall::load($cid);
   }
   else {
-    //watchdog('debug', '1 : new call object');
     $call = new VoipCall();
   }
 
@@ -285,8 +284,6 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
         }
         else {
           //Plivo Cloud
-          watchdog('plivocloud', 'recording params '.print_r($_REQUEST,TRUE));
-          //$suffix = ($plivo_action == 'process_record') ? '.wav' : '.mp3';
           $plivo_record_url = $_REQUEST['RecordUrl'];
           //Transfer the file to local server
           $file = _voipplivocore_transfer_file($plivo_record_url);
@@ -979,7 +976,6 @@ function _voipplivocore_send_response($response) {
   $output .= '<Response>';
   $output .= $response;
   $output .= '</Response>';
-watchdog('plivocore', 'output:'.print_r($output,true));
   drupal_add_http_header('Content-Type', 'text/xml; charset=utf-8');
   print $output;
   return TRUE;

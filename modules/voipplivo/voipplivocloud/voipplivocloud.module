@@ -8,8 +8,8 @@
 //-----------------------------------------------------------------------------
 // Public functions
 //-----------------------------------------------------------------------------
-module_load_include('inc', 'voipplivocloud', 'plivocloud/voipplivocloud');
-module_load_include('inc', 'voipplivocloud', 'plivocloud/voipplivocloudserver');
+module_load_include('inc', 'voipplivocloud', 'voipplivocloud');
+module_load_include('inc', 'voipplivocloud', 'voipplivocloudserver');
 /**
  * Implements hook_voip_serverinfo().
  */

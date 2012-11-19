@@ -9,8 +9,8 @@
 //-----------------------------------------------------------------------------
 // Public functions
 //-----------------------------------------------------------------------------
-module_load_include('inc', 'voipplivoframework', 'plivoframework/voipplivoframework');
-module_load_include('inc', 'voipplivoframework', 'plivoframework/voipplivoframeworkserver');
+module_load_include('inc', 'voipplivoframework', 'voipplivoframework');
+module_load_include('inc', 'voipplivoframework', 'voipplivoframeworkserver');
 /**
  * Implements hook_voip_serverinfo().
  */

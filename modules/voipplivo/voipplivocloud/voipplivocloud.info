@@ -6,5 +6,4 @@ dependencies[] = voip
 dependencies[] = voipcall
 core = 7.x
 
-files[] = plivocloud/plivo.php
-files[] = plivocloud/voipplivocloudserver.inc
+files[] = plivo.php

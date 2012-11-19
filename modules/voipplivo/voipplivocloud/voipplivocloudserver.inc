@@ -121,7 +121,6 @@ class VoipPlivoCloudServer extends VoipServer {
     try{
       $client = new RestAPI($auth_id, $auth_token);
       $response = $client->make_call($params);
-      watchdog('plivocloud',print_r($response,true));
       if(isset($response['response']['error'])){
         switch($response['status']) {
           case '400':
@@ -241,7 +240,6 @@ class VoipPlivoCloudServer extends VoipServer {
         'type' => 'sms',
       );
       $response = $client->send_message($params);
-      watchdog('plivocloud',print_r($response,true));
 
       if(isset($response['response']['error'])){
         switch($response['status']) {
