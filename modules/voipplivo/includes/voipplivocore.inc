@@ -142,7 +142,12 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
       $call->setCallId($call_id);
       //Machine detection (works only with Plivo Cloud)
       if(isset($_REQUEST['Machine'])) {
-        $tmp = VoipCall::ANSWERED_MACHINE;
+        if($_REQUEST['Machine'] == 'true') {
+          $tmp = VoipCall::ANSWERED_MACHINE;
+        }
+        else {
+          $tmp = VoipCall::ANSWERED_HUMAN;
+        }
       }
       else {
         $tmp = VoipCall::ANSWERED_HUMAN;
