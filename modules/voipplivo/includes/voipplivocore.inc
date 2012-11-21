@@ -140,13 +140,14 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
       // store plivo call id for all outbound calls
       $call_id = $_REQUEST['CallUUID'];
       $call->setCallId($call_id);
-      //TODO: Is there AnsweredBy in Plivo?
-      /* $answered_by = $_REQUEST['AnsweredBy'];
-      if($answered_by) {
-        $tmp = ($answered_by == 'human') ? VoipCall::ANSWERED_HUMAN
-                                         : VoipCall::ANSWERED_MACHINE;
-        $call->setAnsweredBy($tmp);
-      }*/
+      //Machine detection (works only with Plivo Cloud)
+      if(isset($_REQUEST['Machine'])) {
+        $tmp = VoipCall::ANSWERED_MACHINE;
+      }
+      else {
+        $tmp = VoipCall::ANSWERED_HUMAN;
+      }
+      $call->setAnsweredBy($tmp);
     }
   }
 
@@ -166,9 +167,6 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
   if (!$call->getDestNumber()) {
     $call->setDestNumber($_REQUEST['To']);
   }
-//todo:
-
-
 
   // get the cid of the call
   $cid = $call->getCid();
@@ -177,8 +175,7 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
     $voip_session->save();
   }
 
-  //todo: some of statuses come with empty call_status
-  $plivo_call_status = $_REQUEST['CallStatus']; //todo: is this maybe Status?
+  $plivo_call_status = $_REQUEST['CallStatus'];
   if (empty($plivo_call_status)) {
     $plivo_call_status = isset($_REQUEST['Status']) ? $_REQUEST['Status'] : 'in-progress';
   }
@@ -259,7 +256,6 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
         //@todo: store some of returned information about conference? https://www.plivo.com/docs/xml/conference/#confcallbackurlparam
         break;
       case 'process_dial':
-        //TODO: Test request parameters
         $call = _voipplivocore_process_dial_response($server, $call, $_REQUEST);
         break;
       case 'process_get_input':
@@ -268,7 +264,7 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
           ? '' : $_REQUEST['Digits'];
         $script->setVar('input_digits', $input);
         $call->setScript($script);
-        watchdog('plivotodo', 'digits '.$input);
+        //watchdog('plivotodo', 'digits '.$input);
         break;
       case 'process_record':
       case 'process_record_mp3':
@@ -511,7 +507,6 @@ function voipplivocore_script_handler($server, $call) {
             $action = url($response_url, array('absolute' => TRUE));
             $method = 'POST';
 
-            // TODO: implement the other features such as multi-dial, url(for private scripts) and sendDigits?
             $timeout = $script->evalString($cmd->getParam('timeout', 30));
             $hangup_on_star = $script->evalString($cmd->getParam('hangup_on_star', FALSE));
             $hangup_on_star = $hangup_on_star ? 'true' : 'false';
@@ -688,23 +683,22 @@ function voipplivocore_script_handler($server, $call) {
           $room = $script->evalString($cmd->getParam('room'));
           $muted = $script->evalString($cmd->getParam('muted', FALSE));
           $muted = $muted ? 'true' : 'false';
-          //TODO: Check about this param, doc is not consistent in Plivo
-          $beep = 'true'; // by default, announce new participants
           $start_on_enter = 'true';
           $end_on_exit = 'false';
-          //TODO: waitSound in Plivo must return a RESTXML with Play and/or Wait Elements only
-          $wait_url = '';
+          $wait_url = ''; //waitSound in Plivo must return a RESTXML with Play and/or Wait Elements only
           $hangup_on_star = $script->evalString($cmd->getParam('hangup_on_star', FALSE));
           $hangup_on_star = $hangup_on_star ? 'true' : 'false';
           if($server == 'plivoframework') {
             $time_limit = '14400'; // max allowed for Plivo Framework calls
+            $beep = '" beep="true';
           }
           else {
             $time_limit = '0';
+            $beep = '" enterSound="beep:1';
           }
 
           $response .= '<Conference muted="' . $muted
-            . '" beep="' . $beep
+            . $beep
             . '" startConferenceOnEnter="' . $start_on_enter
             . '" endConferenceOnExit="' . $end_on_exit
             . '" waitSound="' . $wait_url
