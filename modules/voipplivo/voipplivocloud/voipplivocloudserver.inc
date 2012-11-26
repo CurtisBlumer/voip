@@ -335,7 +335,6 @@ class VoipPlivoCloudServer extends VoipServer {
   /**
    * Implementation of the VoipServer text_handler() API method
    */
-  //todo
   function text_handler($text_content, $origin, $destination, $time, $network, $server_name) {
     $menu_path = 'voip/plivocloud/callhandler';
     $request_url = $menu_path . '/process_inbound_text/';

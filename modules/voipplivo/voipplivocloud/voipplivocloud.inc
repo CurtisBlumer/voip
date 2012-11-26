@@ -48,36 +48,16 @@ function _voipplivocloud_validate_request() {
   $server_config = $server->getConfig();
   $auth_token = $server_config['voipplivocloud_auth_token'];
 
-
-  // Note, that if your URL uses an implied "index" document
-  // (index.php), then apache often adds a slash to the SCRIPT_URI
-  // while Plivo's original request will not have a slash
-  // Example: if Plivo requested http://mycompany.com/answer
-  //   and that url is handled by an index.php script
-  //   Apache/PHP will report the URI as being:
-  //   http://mycompany.com/answer/
-  //   But the hash should be calculated without the trailing slash
-
-  // Also note, if you're using URL rewriting, then you should check
-  // to see that PHP is reporting your SCRIPT_URI and
-  // QUERY_STRING correctly.
-
-  if ($_SERVER['HTTPS']) {
-    $http = "https://";
-  }
-  else {
-    $http = "http://";
-  }
-
-  $url = $http . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-
-  if (isset($_POST)) {
-    // copy the post data
+  if(isset($_GET)) {
+    $post_params = $_GET;
+  } elseif(isset($_POST)) {
     $post_params = $_POST;
   }
 
   $signature = $_SERVER["HTTP_X_PLIVO_SIGNATURE"];
-  if (validate_signature($url, $post_params, $signature, $auth_token)) {
+  $uri = "http://". $_SERVER["SERVER_NAME"] . $_SERVER["PHP_SELF"];
+
+  if (validate_signature($uri, $post_params, $signature, $auth_token)) {
     return TRUE;
   }
   return FALSE;
