@@ -20,9 +20,7 @@ class VoipSession {
    *   Session object.
    */
   public static function getSessionByNumber($origin_number, $destination_number) {
-    $origin_number = voipcall_normalize_phone_number($origin_number);
-	$destination_number = voipcall_normalize_phone_number($destination_number);
-	$session_data = db_query("SELECT * FROM {voipsession} WHERE (origin_number=:origin_number AND destination_number=:destination_number) OR (origin_number=:destination_number AND destination_number=:origin_number)", array(':origin_number' => $origin_number, ':destination_number' => $destination_number))->fetchObject();
+	  $session_data = db_query("SELECT * FROM {voipsession} WHERE (origin_number=:origin_number AND destination_number=:destination_number) OR (origin_number=:destination_number AND destination_number=:origin_number)", array(':origin_number' => $origin_number, ':destination_number' => $destination_number))->fetchObject();
 
     if ($session_data && $session_data->expiring_at < time()) {
       //Delete this session, its expired
@@ -105,7 +103,7 @@ class VoipSession {
   }
 
   public function setOriginNumber($origin_number) {
-     $this->session_data->origin_number = voipcall_normalize_phone_number($origin_number);
+     $this->session_data->origin_number = $origin_number;
   }
 
   public function getDestinationNumber() {
@@ -113,7 +111,7 @@ class VoipSession {
   }
 
   public function setDestinationNumber($destination_number) {
-    $this->session_data->destination_number = voipcall_normalize_phone_number($destination_number);
+    $this->session_data->destination_number = $destination_number;
   }
 
   public function setExpirationTime($expiration_time = NULL) {

@@ -578,4 +578,20 @@ class VoipTropoServer extends VoipServer {
     );
     return $voices;
   }
+
+  /*
+  * Tropo implementation of NormalizeNumber
+  * Takes into consideration that call between two numbers in same country will use domestic format.
+  * In case of SMS Tropo doesn't return + sign so we need to add it.
+  */
+  public static function NormalizeNumber($number){
+    if(strlen($number)<11) {
+      //This is domestic number, don't do anything
+      return $number;
+    }
+    else {
+      //Normalize number by adding '+' prefix
+      return VoipCall::NormalizeNumber($number);
+    }
+  }
 }

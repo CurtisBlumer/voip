@@ -144,6 +144,34 @@ class VoipCall {
     return $cid;
   }
 
+  /**
+   * Normalize the phone number to fit the +CCCXXXYYYY (E.164) format used by
+   * most voip servers. This function also handles SIP addresses.
+   *  Examples:
+   *   16174890199 => +16174890199
+   *   6174890199 => +16174890199
+   *   +551196664471 => +551196664471
+   *   +55 (11) 9666.4471 => +551196664471
+   *   55 (11) 9666.4471 => +551196664471
+   *   sip:jim@sip.com => sip:jim@sip.com
+   */
+  public static function NormalizeNumber($number) {
+    //Remove special chars from number
+    $chars = array(' ', '-', '.', '(', ')', '+');
+    $number = str_replace($chars, '', $number);
+
+    //If this is sip address
+    if (!strncasecmp($number, 'sip:', 4)) {
+      return $number;
+    }
+    //Else:
+    //Remove 00 from begining of number
+    $pattern = '/^00/';
+    $number = preg_replace($pattern, '', $number);
+    $number = '+'.$number;
+    return $number;
+  }
+
   /*
    * Public methods
    */
@@ -248,7 +276,7 @@ class VoipCall {
   public function setUid($uid) {
     $this->call_data->uid = $uid;
   }
-  
+
   public function loadGlobalUser(){
     $uid = $this->getUid();
     if(empty($uid)){
@@ -271,7 +299,7 @@ class VoipCall {
   }
 
   public function setDestNumber($number) {
-    $this->call_data->dest_number = voipcall_normalize_phone_number($number);
+    $this->call_data->dest_number = $number;
   }
 
   public function getDestName() {
@@ -287,7 +315,7 @@ class VoipCall {
   }
 
   public function setCallerNumber($number) {
-    $this->call_data->caller_number = voipcall_normalize_phone_number($number);
+    $this->call_data->caller_number = $number;
   }
 
   public function getCallerName() {
@@ -354,7 +382,7 @@ class VoipCall {
     }
     return $description;
   }
-  
+
   public function getProcessingHangup() {
     return $this->call_data->processing_hangup;
   }
@@ -606,7 +634,7 @@ class VoipCall {
       if (!isset($details->call_id)) {
         $data->call_id = NULL;
       }
-	  
+
 	  // initialize 'Caller Number' field
       if (!isset($details->caller_number)) {
         $data->caller_number = variable_get('voipcall_cid_number', NULL);
@@ -656,7 +684,7 @@ class VoipCall {
 
       // initialize voice call script with the default inbound/outbound one
       $direction = isset($details->direction) ? $details->direction : $data->direction;
-      
+
       if (!isset($details->script)) {
         if ($details->current_channel == 'text' || $details->current_channel == 'offline_text') {
           $script_name = voipcall_get_default_inbound_text_script_name();
@@ -683,7 +711,7 @@ class VoipCall {
       if (!isset($details->error_message)) {
         $data->error_message = NULL;
       }
-	  
+
 	  // initialize 'Processing Hangup'' field
       if (!isset($details->processing_hangup)) {
         $data->processing_hangup = FALSE;
@@ -693,7 +721,7 @@ class VoipCall {
       if (!isset($details->check_machine)) {
         $data->check_machine = FALSE;
       }
-	  
+
 	  // initialize 'Dest name' field
       if (!isset($details->dest_name)) {
         $data->dest_name = NULL;
@@ -711,7 +739,7 @@ class VoipCall {
     /*if (isset($details->uid)) {
       $data->uid = $details->uid;
     }*/
-    
+
     // update call uid based on current user
     global $user;
     $data->uid = $user->uid;
@@ -828,7 +856,7 @@ class VoipCall {
     if (isset($new_hangup_reason)) {
       $data->hangup_reason =  $new_hangup_reason;
     }
-	
+
 	$processing_hangup = isset($details->processing_hangup) ? $details->processing_hangup : NULL;
     if (isset($processing_hangup)) {
       $data->processing_hangup = $processing_hangup;
@@ -919,15 +947,15 @@ class VoipCall {
 
     $script->setVar('hangup_reason',
         $call_data->hangup_reason);
-		
+
 	$script->setVar('processing_hangup',
       $call_data->processing_hangup);
-	
+
     $script->setVar('current_channel',
       $call_data->current_channel);
 
     $script->setVar('current_network',
-      $call_data->current_network);	
+      $call_data->current_network);
 
     $script->setVar('check_machine',
         $call_data->check_machine);
