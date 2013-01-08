@@ -75,10 +75,6 @@ function voipcall_schema() {
         'type' => 'text',
         'size' => 'small',
       ),
-      'hangup_script' => array(
-        'type' => 'varchar',
-        'length' => 255,
-      ),
       'script' => array(
         'type' => 'text',
         'size' => 'big',
@@ -106,10 +102,6 @@ function voipcall_schema() {
       'hangup_reason' => array(
         'type' => 'varchar',
         'length' => 255,
-      ),
-	  'processing_hangup' => array(
-        'type' => 'int',
-        'default' => 0,
       ),
       'check_machine' => array(
         'type' => 'int',
@@ -326,4 +318,13 @@ function voipcall_update_6104() {
     )
   );
   return $ret;
+}
+
+/**
+ * Drop hangup_script and processing_hangup fields
+ */
+function voipcall_update_7105() {
+  db_drop_field('voipcall', 'hangup_script');
+  db_drop_field('voipcall', 'processing_hangup');
+  return t('VoIP Call Update 7105 ran successfully.');
 }
