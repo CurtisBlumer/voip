@@ -1284,6 +1284,7 @@ class Result {
       }
     }
     $result = json_decode($json);
+
     if (!is_object($result) || !property_exists($result, "result")) {
       throw new TropoException('Not a result object.');
     }

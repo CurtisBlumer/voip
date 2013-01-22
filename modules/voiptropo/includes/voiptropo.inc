@@ -60,15 +60,14 @@
   // determine tropo_action and cid based on the incoming session object
   try {
     // attempt to handle new outbound and inbound voice/text calls
-    //$session = new Session();
-    $json = json_decode(@file_get_contents('php://input'));
- if (!$json && isset($_POST['json'])) {
- $json = json_decode($_POST['json']);
- $session = new Session($json);
- }
- else {
- $session = new Session();
- }
+    $session = new Session();
+    /*$json = json_decode(@file_get_contents('php://input'));
+    if (!$json && isset($_POST['json'])) {
+      $session = new Session($_POST['json']);
+    }
+    else {
+     $session = new Session();
+    }*/
     $tropo_action = $session->getParameters('tropo_action');
     if (empty($tropo_action)) {
       $tropo_action = 'process_inbound_calls';
@@ -505,7 +504,7 @@ function _voiptropo_script_handler($call, &$tropo) {
             $call->report_error('voiptropo', $msg, $params);
             $rc = FALSE;
             $processing = FALSE;
-            $found = TRUE;
+            //$found = TRUE;
             // report the error to the phone user
             $text = 'Processing error. Please contact your system administrator.';
             // translate the text
@@ -568,23 +567,34 @@ function _voiptropo_script_handler($call, &$tropo) {
           $to = $script->evalString($cmd->getParam('to'));
           //If "to" is empty then send message to the caller
           if (!$to) {
-            $to = $script->evalString($script->getVar('caller_number'));
+              $direction = $call->getDirection();
+              if ($direction == 'inbound') {
+                $to = $script->evalString($script->getVar('caller_number'));
+              }
+              else {
+                $to = $script->evalString($script->getVar('dest_number'));
+              }
+              if (!$to) {
+                watchdog('voiptropo', 'Attempt to send '.$network.' to empty number', array(), WATCHDOG_ERROR);
+                $processing = TRUE;
+                break;
+              }
           }
           $text = $script->evalString($cmd->getParam('text'));
           $network = $script->evalString($cmd->getParam('network'));
-          if (voipscript_use_sms_framework() && (strtolower($network) == 'sms' || strtolower($call->getCurrentNetwork()) == 'sms')) {
+
+          if (voipscript_use_sms_framework()) {
             //Use SMS Framework to send SMS message if user enabled this option
             voipscript_send_sms_framework($to, $text);
           }
+          else if (strtolower($call->getCurrentChannel()) == 'offline_text') {
+            //Use voip_text()
+            $reply = TRUE;
+            $call->setCurrentChannel('text');
+            $call->save();
+            voip_text($text, $call, $reply);
+          }
           else {
-            if (strtolower($call->getCurrentChannel()) == 'offline_text') {
-              //Use voip_text()
-              $reply = TRUE;
-              $call->setCurrentChannel('text');
-              voip_text($text, $call, $reply);
-              $processing = TRUE;
-            }
-            else {
               $params = array(
                 'to' => $to,
                 'channel' => 'TEXT',
@@ -595,7 +605,8 @@ function _voiptropo_script_handler($call, &$tropo) {
                 // Note: If no caller number provided, use the system's number as the default caller id
                 $default_cid_number = variable_get('voipcall_cid_number', NULL);
                 $caller_id = $script->evalString($cmd->getParam('caller_id', $default_cid_number));
-                //$params['from'] = $caller_id;
+                //@todo: why was this removed?
+                $params['from'] = $caller_id;
               }
               $tropo->message($text, $params);
               //Register events:
@@ -619,7 +630,6 @@ function _voiptropo_script_handler($call, &$tropo) {
               //$response_url = $menu_path . '/process_hangup/' . $cid ;
               //$action = url($response_url, array('absolute' => TRUE));
               //$tropo->on(array("event" => "hangup", "next" => $action));
-            }
           }
           $rc = TRUE;
           $processing = TRUE;
@@ -825,7 +835,7 @@ function _voiptropo_process_sms_response($call, $sms_status_tmp) {
       return NULL;
       break;
     case 'error':
-      $msg = 'SMS sendind failed for call cid: @cid. Make sure your tropo number is sms-enabled.';
+      $msg = 'SMS sending failed for call cid: @cid. Make sure your tropo number is sms-enabled.';
       $params = array('@cid' => $cid);
       watchdog('voiptropo', $msg, $params, WATCHDOG_WARNING);
       $sms_status = VoipCall::TEXT_FAILED;
@@ -1168,7 +1178,11 @@ function _voiptropo_handle_new_calls($tropo_action, $session) {
     }
     else {
       if ($tropo_action == 'process_outbound_text') {
-        $to = $call->getDestNumber();
+        //When using send_text then $to is already filled from dest_number param
+        if(!$to) {
+          $to = $call->getDestNumber();
+        }
+
         $text = $session->getParameters('text');
         $params = array(
           'to' => $to,
