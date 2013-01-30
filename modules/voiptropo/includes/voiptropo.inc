@@ -662,6 +662,12 @@ function _voiptropo_script_handler($call, &$tropo) {
           break;
 
         case 'VoipCmdWait':
+          $network = $script->evalString($cmd->getParam('network'));
+          if($network != 'voip') {
+            watchdog('voiptropo', 'Attempt to call Wait() command in SMS message.', array(), WATCHDOG_ERROR);
+            $processing = TRUE;
+            break;
+          }
           $time_limit = $script->evalString($cmd->getParam('time_limit')) / 0.55; //Looks like one period matches 0.55sec.
           $cid = $call->getCid();
           //#1430227 - Equivalent of the wait function?: https://www.tropo.com/account/tickets/tickets.jsp?bb-cid=155&bb-tid=1429227&bb-name=tropo_support
