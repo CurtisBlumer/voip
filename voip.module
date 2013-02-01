@@ -143,10 +143,14 @@ function voip_text_handler($text_content, $origin, $destination, $time, $network
 function voip_sms_incoming($op, $number, $message, $options) {
   if ($op == 'process') {
     if (voip_debug()) {
-      $msg = "in voip_sms_incoming() with number: $number and message: $message ";
+      $msg = "in voip_sms_incoming() with number: $number and message: $message ".print_r($options, true);
       watchdog('voipcall', $msg);
     }
-    voip_text_handler($message, $number, '', REQUEST_TIME);
+    if (isset($options['gw_number'])) {
+
+    }
+    $gateway_number = isset($options['gw_number']) ? VoipCall::NormalizeNumber($options['gw_number']) : '';
+    voip_text_handler($message, $number, $gateway_number, REQUEST_TIME);
   }
 }
 

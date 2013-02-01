@@ -592,12 +592,17 @@ function _voiptropo_script_handler($call, &$tropo) {
           else if (strtolower($call->getCurrentChannel()) == 'offline_text') {
             //Use voip_text()
             $reply = TRUE;
-            $call->setCurrentChannel('text');
-            $call->save();
+            //We must unset dest_number because it will be number of SMS Framework gateway
+            $call->setDestNumber('');
+            //$call->setCurrentChannel('text');
+            $call = $call->save();
             voip_text($text, $call, $reply);
+            //In case of multiple sendText() commands we must again set channel to offline_text
+            $call->setCurrentChannel('offline_text');
+            $call = $call->save();
           }
           else {
-              //Get from number if not set
+            //Get from number if not set
               if (!$from && strtolower($network) == 'sms') {
                 //We need caller id only for sms
                 // Note: If no caller number provided, use the system's number as the default caller id

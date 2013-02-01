@@ -140,7 +140,7 @@ class VoipTropoServer extends VoipServer {
     //determine from/to numbers
     if ($reply) {
       $to = $voipcall->getCallerNumber();
-      $from = ($voipcall->getDestNumber()) ? $voipcall->getDestNumber() :variable_get('voipcall_cid_number', NULL);;
+      $from = ($voipcall->getDestNumber()) ? $voipcall->getDestNumber() :variable_get('voipcall_cid_number', NULL);
 	  if (!isset($from)) {
         $voipcall->report_error('voiptropo', "Attempt to send a text message reply with no caller number.");
         return FALSE;
@@ -172,9 +172,9 @@ class VoipTropoServer extends VoipServer {
       $voipcall->setDirection(VoipCall::OUTBOUND);
       $voipcall->setCurrentChannel('text');
       $voipcall->setCurrentNetwork('sms');
-	  $voipcall->save();
+	    $voipcall->save();
       $cid = $voipcall->getCid();
-	  $voip_session->setCid($cid);
+	    $voip_session->setCid($cid);
     }
     $voip_session->save();
 
@@ -593,6 +593,11 @@ class VoipTropoServer extends VoipServer {
   * In case of SMS Tropo doesn't return + sign so we need to add it.
   */
   public static function NormalizeNumber($number){
+    if(!$number) {
+      //Empty number
+      return $number;
+    }
+
     if(strlen($number)<11) {
       //This is domestic number, Tropo uses it only for USA/Canada
       //so we'll explicity add country code
