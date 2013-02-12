@@ -65,7 +65,7 @@ class VoipTropoServer extends VoipServer {
       $server_config = $this->getConfig();
     }
 
-	$caller_number = ($voipcall->getCallerNumber())
+	  $caller_number = ($voipcall->getCallerNumber())
       ? $voipcall->getCallerNumber()
       : variable_get('voipcall_cid_number', NULL);
     $dest_number = $voipcall->getDestNumber();
@@ -74,25 +74,25 @@ class VoipTropoServer extends VoipServer {
     $voip_session = VoipSession::getSessionByNumber($caller_number, $dest_number);
     if ($voip_session) {
       $voip_session->resetTimer();
-	  //we must preserve cid
-	  $cid = $voip_session->getCid();
-	  //load existing call
-	  $voipcall = VoipCall::load($cid);
+	    //we must preserve cid
+	    $cid = $voip_session->getCid();
+	    //load existing call
+	    $voipcall = VoipCall::load($cid);
     }
     else {
       $voip_session = new VoipSession();
       $voip_session->setOriginNumber($caller_number);
       $voip_session->setDestinationNumber($dest_number);
 
-	  // update call variables
-	  $voipcall->setCallerNumber($caller_number);
+	    // update call variables
+	    $voipcall->setCallerNumber($caller_number);
       $voipcall->setSource('drupal');
       $voipcall->setDirection(VoipCall::OUTBOUND);
-      $voipcall->setCurrentChannel('voice');
-      $voipcall->setCurrentNetwork('voip');
-	  $voipcall->save();
+      $voipcall->setCallChannel('voice');
+      $voipcall->setCallNetwork('voip');
+	    $voipcall->save();
       $cid = $voipcall->getCid();
-	  $voip_session->setCid($cid);
+	    $voip_session->setCid($cid);
     }
     $voip_session->save();
 
@@ -103,7 +103,6 @@ class VoipTropoServer extends VoipServer {
 
     // Instantiate a new tropo Rest Client
     $client = new SessionAPI();
-    //$cid = $voipcall->getCid();
 
     $vars = array(
       'action' => 'create',
@@ -136,7 +135,6 @@ class VoipTropoServer extends VoipServer {
    */
   function send_text($text, $voipcall, $reply = FALSE, $server_config = NULL) {
     voip_error_reset();
-
     //determine from/to numbers
     if ($reply) {
       $to = $voipcall->getCallerNumber();
@@ -167,11 +165,19 @@ class VoipTropoServer extends VoipServer {
       $voip_session->setOriginNumber($from);
       $voip_session->setDestinationNumber($to);
 
-	  // update call variables
+	    // update call variables
       $voipcall->setSource('drupal');
-      $voipcall->setDirection(VoipCall::OUTBOUND);
-      $voipcall->setCurrentChannel('text');
-      $voipcall->setCurrentNetwork('sms');
+      if(!$voipcall->getDirection()) {
+        $voipcall->setDirection(VoipCall::OUTBOUND);
+      }
+      if(!$voipcall->getCallChannel()) {
+        $voipcall->setCallChannel('text');
+      }
+
+      if (!$voipcall->getCallNetwork()) {
+        $voipcall->setCallNetwork('sms');
+      }
+
 	    $voipcall->save();
       $cid = $voipcall->getCid();
 	    $voip_session->setCid($cid);
@@ -274,7 +280,8 @@ class VoipTropoServer extends VoipServer {
    */
   function text_handler($text_content, $origin, $destination, $time, $network, $server_name) {
     $menu_path = 'voip/tropo/callhandler';
-    $request_url = $menu_path . '/process_inbound_calls/';
+    //$request_url = $menu_path . '/process_inbound_calls/';
+    $request_url = $menu_path . '/process_sms_framework/';
     $url = url($request_url, array('absolute' => TRUE));
 
     $length = 20;
@@ -287,10 +294,10 @@ class VoipTropoServer extends VoipServer {
     $vars->session->id =  $random_string;
     $vars->session->initialText =  $text_content;
     $vars->session->from->id = $origin;
-    $vars->session->from->channel = 'offline_text';
+    $vars->session->from->channel = 'ext';
     $vars->session->from->network = 'sms';
     $vars->session->to->id = $destination;
-    $vars->session->to->channel = 'offline_text';
+    $vars->session->to->channel = 'text';
     $vars->session->to->network = 'sms';
 
     //open connection

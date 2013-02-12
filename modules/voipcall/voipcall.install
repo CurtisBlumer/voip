@@ -107,19 +107,23 @@ function voipcall_schema() {
         'type' => 'int',
         'default' => 0,
       ),
-      'current_channel' => array(
+      /*'current_channel' => array(
         'type' => 'varchar',
         'length' => 255,
-      ),
+      ),*/
       'call_channel' => array(
         'type' => 'varchar',
         'length' => 255,
       ),
-      'current_network' => array(
+      /*'current_network' => array(
+        'type' => 'varchar',
+        'length' => 255,
+      ),*/
+      'call_network' => array(
         'type' => 'varchar',
         'length' => 255,
       ),
-      'call_network' => array(
+      'call_origin' => array(
         'type' => 'varchar',
         'length' => 255,
       ),
@@ -327,4 +331,21 @@ function voipcall_update_7105() {
   db_drop_field('voipcall', 'hangup_script');
   db_drop_field('voipcall', 'processing_hangup');
   return t('VoIP Call Update 7105 ran successfully.');
+}
+
+/**
+ * Drop current_channel and current_network fields. Add call_origin field.
+ */
+function voipcall_update_7106() {
+  db_drop_field('voipcall', 'current_channel');
+  db_drop_field('voipcall', 'current_network');
+  db_add_field('voipcall', 'call_origin',
+    array(
+      'type' => 'varchar',
+      'length' => 255,
+      'not null' => TRUE,
+      'default' => '',
+    )
+  );
+  return t('VoIP Call Update 7106 ran successfully.');
 }

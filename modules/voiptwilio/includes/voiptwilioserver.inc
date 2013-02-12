@@ -58,10 +58,10 @@ class VoipTwilioServer extends VoipServer {
     $voip_session = VoipSession::getSessionByNumber($caller_number, $dest_number);
     if ($voip_session) {
       $voip_session->resetTimer();
-	   //we must preserve cid
-	  $cid = $voip_session->getCid();
-	  //load existing call
-	  $voipcall = VoipCall::load($cid);
+	     //we must preserve cid
+	    $cid = $voip_session->getCid();
+	    //load existing call
+	    $voipcall = VoipCall::load($cid);
     }
     else {
       $voip_session = new VoipSession();
@@ -71,9 +71,9 @@ class VoipTwilioServer extends VoipServer {
 	  // Update call variables
       $voipcall->setSource('drupal');
       $voipcall->setDirection(VoipCall::OUTBOUND);
-	  $voipcall->save();
+	    $voipcall->save();
       $cid = $voipcall->getCid();
-	  $voip_session->setCid($cid);
+	    $voip_session->setCid($cid);
     }
     $voip_session->save();
 
@@ -183,37 +183,48 @@ class VoipTwilioServer extends VoipServer {
       $from = ($voipcall->getDestNumber())
         ? $voipcall->getDestNumber()
         : variable_get('voipcall_cid_number', NULL);
-      if (!isset($from)) {
-        $voipcall->report_error('voiptwilio', "Attempt to send a text message reply with no caller number.");
-        return FALSE;
-      }
     }
     else {
       $to = $voipcall->getDestNumber();
-      $from = $voipcall->getCallerNumber();
+      //From number is required in Twilio
+      $from = ($voipcall->getCallerNumber())
+        ? $voipcall->getCallerNumber()
+        : variable_get('voipcall_cid_number', NULL);
+    }
+
+    if (!isset($from)) {
+      $voipcall->report_error('voiptwilio', "Attempt to send a text message reply with no caller number.");
+      return FALSE;
     }
 
     // (re)start the session associated with the call
     $voip_session = VoipSession::getSessionByNumber($from, $to);
     if ($voip_session) {
       $voip_session->resetTimer();
-	  $cid = $voip_session->getCid();
-	  //load existing call
-	  $voipcall = VoipCall::load($cid);
+	    $cid = $voip_session->getCid();
+	    //load existing call
+	    $voipcall = VoipCall::load($cid);
     }
     else {
       $voip_session = new VoipSession();
       $voip_session->setOriginNumber($from);
       $voip_session->setDestinationNumber($to);
 
-	  // update call variables
+	    // update call variables
       $voipcall->setSource('drupal');
-      $voipcall->setDirection(VoipCall::OUTBOUND);
-      $voipcall->setCurrentChannel('text');
-      $voipcall->setCurrentNetwork('sms');
-	  $voipcall->save();
+      if(!$voipcall->getDirection()) {
+        $voipcall->setDirection(VoipCall::OUTBOUND);
+      }
+      if(!$voipcall->getCallChannel()) {
+        $voipcall->setCallChannel('text');
+      }
+
+      if (!$voipcall->getCallNetwork()) {
+        $voipcall->setCallNetwork('sms');
+      }
+	    $voipcall->save();
       $cid = $voipcall->getCid();
-	  $voip_session->setCid($cid);
+	    $voip_session->setCid($cid);
     }
     //$voip_session->setCid($voipcall->getCid());
     $voip_session->save();
@@ -375,7 +386,8 @@ class VoipTwilioServer extends VoipServer {
    */
   function text_handler($text_content, $origin, $destination, $time, $network, $server_name) {
     $menu_path = 'voip/twilio/callhandler';
-    $request_url = $menu_path . '/process_inbound_text/';
+    //$request_url = $menu_path . '/process_inbound_text/';
+    $request_url = $menu_path . '/process_sms_framework/';
     $url = url($request_url, array('absolute' => TRUE));
 
     $server_config = $this->getConfig();
@@ -386,7 +398,7 @@ class VoipTwilioServer extends VoipServer {
       'To' => $destination,
       'Body' => $text_content,
       'Direction' => 'inbound',
-      'Channel' => 'offline_text',
+      'Channel' => 'text',
     );
 
     //url-ify the data for the POST

@@ -487,7 +487,7 @@ class VoipCall {
     $this->call_data->hangup_reason = $reason;
   }
 
-  public function getCurrentChannel() {
+  /*public function getCurrentChannel() {
     return $this->call_data->current_channel;
   }
 
@@ -497,7 +497,7 @@ class VoipCall {
       //Set initial channel
       $this->call_data->call_channel = $channel;
     }
-  }
+  }*/
 
   public function getCallChannel() {
     return $this->call_data->call_channel;
@@ -507,7 +507,7 @@ class VoipCall {
     $this->call_data->call_channel = $channel;
   }
 
-  public function getCurrentNetwork() {
+  /*public function getCurrentNetwork() {
     return $this->call_data->current_network;
   }
 
@@ -518,13 +518,21 @@ class VoipCall {
       $this->call_data->call_network = $network;
     }
   }
-
+*/
   public function getCallNetwork() {
     return $this->call_data->call_network;
   }
 
   public function setCallNetwork($network) {
     $this->call_data->call_network = $network;
+  }
+
+  public function setCallOrigin($origin) {
+    $this->call_data->call_origin = $origin;
+  }
+
+  public function getCallOrigin() {
+    return $this->call_data->call_origin;
   }
 
   public function getHangupReasonDescription() {
@@ -588,6 +596,7 @@ class VoipCall {
     $script->setVar('inbound_text_origin', $inbound_text_origin);
     $script->setVar('inbound_text_destination', $inbound_text_destination);
     $script->setVar('inbound_text_network', $inbound_text_network);
+
     $this->call_data->script = $script;
   }
 
@@ -657,24 +666,30 @@ class VoipCall {
       if (!isset($details->call_channel)) {
         $data->call_channel = 'voice';
       }
-      if (!isset($details->current_channel)) {
+
+      // initialize 'Origin' field
+      if (!isset($details->call_origin)) {
+        $data->call_origin = 'voipprovider';
+      }
+
+      /*if (!isset($details->current_channel)) {
         //$data->current_channel = 'voice';
         $details->current_channel = 'voice';
-      }
+      }*/
 
       // initialize 'Network' fields
       if (!isset($details->call_network)) {
         $data->call_network = 'voip';
       }
-      if (!isset($details->current_network)) {
+      /*if (!isset($details->current_network)) {
         $data->current_network = 'voip';
-      }
+      }*/
 
       // initialize voice call script with the default inbound/outbound one
       $direction = isset($details->direction) ? $details->direction : $data->direction;
 
       if (!isset($details->script)) {
-        if ($details->current_channel == 'text' || $details->current_channel == 'offline_text') {
+        if ($details->call_channel == 'text') {
           $script_name = voipcall_get_default_inbound_text_script_name();
         }
         else {
@@ -810,20 +825,25 @@ class VoipCall {
       $data->call_channel = $call_channel;
     }
 
-    $current_channel = isset($details->current_channel) ? $details->current_channel : NULL;
+    $call_origin = isset($details->call_origin) ? $details->call_origin : NULL;
+    if (isset($call_origin)) {
+      $data->call_origin = $call_origin;
+    }
+
+    /*$current_channel = isset($details->current_channel) ? $details->current_channel : NULL;
     if (isset($current_channel)) {
       $data->current_channel = $current_channel;
-    }
+    }*/
 
     $call_network = isset($details->call_network) ? $details->call_network : NULL;
     if (isset($call_network)) {
       $data->call_network = $call_network;
     }
 
-    $current_network = isset($details->current_network) ? $details->current_network : NULL;
+    /*$current_network = isset($details->current_network) ? $details->current_network : NULL;
     if (isset($current_network)) {
       $data->current_network = $current_network;
-    }
+    }*/
 
     $new_script = isset($details->script) ? $details->script : NULL;
     if (isset($new_script)) {
@@ -921,12 +941,21 @@ class VoipCall {
     $script->setVar('hangup_reason',
         $call_data->hangup_reason);
 
-    $script->setVar('current_channel',
+    $script->setVar('channel',
+      $call_data->call_channel);
+
+    $script->setVar('network',
+      $call_data->call_network);
+
+    $script->setVar('origin',
+      $call_data->call_origin);
+//@todo: check for dependencies in voip scripts
+    /*$script->setVar('current_channel',
       $call_data->current_channel);
 
     $script->setVar('current_network',
       $call_data->current_network);
-
+*/
     $script->setVar('check_machine',
         $call_data->check_machine);
 
