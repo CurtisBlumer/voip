@@ -423,7 +423,7 @@ function voipplivocore_script_handler($server, $call) {
         $processing = TRUE;
       }
       else {
-        if ($call->getCallChannel() != 'text') {
+        if (strtolower($call->getCallChannel()) != 'text') {
           // for voice channel send a final hangup request
             $response .= '<Hangup/>';
             $msg = 'Script @name ended without a "hangup" command.';
@@ -460,7 +460,7 @@ function voipplivocore_script_handler($server, $call) {
         case 'VoipCmdDial';
           $call->setCallStatus(VoipCall::IN_PROGRESS);
           $number = $script->evalString($cmd->getParam('number'));
-          if ($call->getCallChannel() == 'text') {
+          if (strtolower($call->getCallChannel()) == 'text') {
             //In case VoipCmdDial is called within text channel then instead of transfer we call the sender.
             //we are starting a call, hangup() the existing session
             $response .= '<Hangup/>';
@@ -618,7 +618,7 @@ function voipplivocore_script_handler($server, $call) {
 
           switch ($hangup_mode) {
             case 'resume':
-              if ($call->getCallChannel() != 'text') {
+              if (strtolower($call->getCallChannel()) != 'text') {
                 // send the hangup request and stop processing script commands
                 // Note: this will trigger a response from Plivo with $plivo_action = process_hangup and CallStatus = completed
                 $response .= '<Hangup />';
@@ -636,7 +636,7 @@ function voipplivocore_script_handler($server, $call) {
                 $session->destroy();
               }
 
-              if ($call->getCallChannel() != 'text') {
+              if (strtolower($call->getCallChannel()) != 'text') {
                 // send the hangup request and stop processing script commands
                 // Note: this will trigger a response from Plivo with $plivo_action = process_hangup and CallStatus = completed
                 $response .= '<Hangup/>';

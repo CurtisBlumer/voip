@@ -8,6 +8,7 @@
 //-----------------------------------------------------------------------------
 // Public functions
 //-----------------------------------------------------------------------------
+module_load_include('php', 'voipplivocloud', 'plivo');
 module_load_include('inc', 'voipplivocloud', 'voipplivocloud');
 module_load_include('inc', 'voipplivocloud', 'voipplivocloudserver');
 /**

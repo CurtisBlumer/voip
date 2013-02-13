@@ -42,7 +42,6 @@ function _voipplivocloud_call_handler($plivo_action, $cid = NULL) {
 function _voipplivocloud_validate_request() {
   //todo: hardcoding this until i figure out how to validate request
   return TRUE;
-  watchdog('voipplivocloud', print_r($_SERVER,true));
 
   $server = VoipServer::getServer('plivocloud');
   $server_config = $server->getConfig();
@@ -54,8 +53,11 @@ function _voipplivocloud_validate_request() {
     $post_params = $_POST;
   }
 
+  unset($post_params['q']);
   $signature = $_SERVER["HTTP_X_PLIVO_SIGNATURE"];
-  $uri = "http://". $_SERVER["SERVER_NAME"] . $_SERVER["PHP_SELF"];
+  $uri = "http://". $_SERVER["SERVER_NAME"] . $_SERVER["REQUEST_URI"]; //also tried with PHP_SELF
+  watchdog('voipplivocore', "server ".print_r($_SERVER,true));
+watchdog('voipplivocore', "uri $uri ");
 
   if (validate_signature($uri, $post_params, $signature, $auth_token)) {
     return TRUE;

@@ -941,10 +941,10 @@ class VoipCall {
     $script->setVar('hangup_reason',
         $call_data->hangup_reason);
 
-    $script->setVar('channel',
+    $script->setVar('call_channel',
       $call_data->call_channel);
 
-    $script->setVar('network',
+    $script->setVar('call_network',
       $call_data->call_network);
 
     $script->setVar('origin',

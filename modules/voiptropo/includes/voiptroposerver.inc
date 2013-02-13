@@ -294,7 +294,7 @@ class VoipTropoServer extends VoipServer {
     $vars->session->id =  $random_string;
     $vars->session->initialText =  $text_content;
     $vars->session->from->id = $origin;
-    $vars->session->from->channel = 'ext';
+    $vars->session->from->channel = 'text';
     $vars->session->from->network = 'sms';
     $vars->session->to->id = $destination;
     $vars->session->to->channel = 'text';

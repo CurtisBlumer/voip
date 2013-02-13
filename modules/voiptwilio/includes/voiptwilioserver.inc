@@ -54,33 +54,33 @@ class VoipTwilioServer extends VoipServer {
       : variable_get('voipcall_cid_number', NULL);
     $dest_number = $voipcall->getDestNumber();
 
-	// (re)start the session associated with the call
+    // (re)start the session associated with the call
     $voip_session = VoipSession::getSessionByNumber($caller_number, $dest_number);
     if ($voip_session) {
       $voip_session->resetTimer();
-	     //we must preserve cid
-	    $cid = $voip_session->getCid();
-	    //load existing call
-	    $voipcall = VoipCall::load($cid);
+      //we must preserve cid
+      $cid = $voip_session->getCid();
+      //load existing call
+      $voipcall = VoipCall::load($cid);
     }
     else {
       $voip_session = new VoipSession();
       $voip_session->setOriginNumber($caller_number);
       $voip_session->setDestinationNumber($dest_number);
 
-	  // Update call variables
+      // Update call variables
       $voipcall->setSource('drupal');
       $voipcall->setDirection(VoipCall::OUTBOUND);
-	    $voipcall->save();
+      $voipcall->save();
       $cid = $voipcall->getCid();
-	    $voip_session->setCid($cid);
+      $voip_session->setCid($cid);
     }
     $voip_session->save();
 
     //$cid = $voipcall->getCid();
-	// Initiate a new outbound call by POST'ing to the Calls resource
-	$twilio_path = "/$api_version/Accounts/$account_sid/Calls";
-	$menu_path = 'voip/twilio/callhandler';
+    // Initiate a new outbound call by POST'ing to the Calls resource
+    $twilio_path = "/$api_version/Accounts/$account_sid/Calls";
+    $menu_path = 'voip/twilio/callhandler';
     $response_url = $menu_path . '/process_outbound_calls/' . $cid;
     $call_handler_url = url($response_url, array('absolute' => TRUE));
     $response_url = $menu_path . '/process_hangup/' . $cid;
@@ -107,7 +107,7 @@ class VoipTwilioServer extends VoipServer {
       $vars['IfMachine'] = 'Continue';
     }
 
-	// Instantiate a new Twilio Rest Client
+    // Instantiate a new Twilio Rest Client
     $client = new TwilioRestClient($account_sid, $auth_token);
     $response = $client->request($twilio_path, "POST", $vars);
 
@@ -201,30 +201,30 @@ class VoipTwilioServer extends VoipServer {
     $voip_session = VoipSession::getSessionByNumber($from, $to);
     if ($voip_session) {
       $voip_session->resetTimer();
-	    $cid = $voip_session->getCid();
-	    //load existing call
-	    $voipcall = VoipCall::load($cid);
+      $cid = $voip_session->getCid();
+      //load existing call
+      $voipcall = VoipCall::load($cid);
     }
     else {
       $voip_session = new VoipSession();
       $voip_session->setOriginNumber($from);
       $voip_session->setDestinationNumber($to);
 
-	    // update call variables
+      // update call variables
       $voipcall->setSource('drupal');
-      if(!$voipcall->getDirection()) {
+      if (!$voipcall->getDirection()) {
         $voipcall->setDirection(VoipCall::OUTBOUND);
       }
-      if(!$voipcall->getCallChannel()) {
+      if (!$voipcall->getCallChannel()) {
         $voipcall->setCallChannel('text');
       }
 
       if (!$voipcall->getCallNetwork()) {
         $voipcall->setCallNetwork('sms');
       }
-	    $voipcall->save();
+      $voipcall->save();
       $cid = $voipcall->getCid();
-	    $voip_session->setCid($cid);
+      $voip_session->setCid($cid);
     }
     //$voip_session->setCid($voipcall->getCid());
     $voip_session->save();
@@ -359,7 +359,7 @@ class VoipTwilioServer extends VoipServer {
     else {
       $twilio_path = "/$api_version/Accounts/$account_sid/Calls/$call_id";
       $status = 'completed';
-      $vars =    array(
+      $vars = array(
         'Status' => $status,
       );
 
@@ -414,7 +414,7 @@ class VoipTwilioServer extends VoipServer {
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_POST, count($vars));
     curl_setopt($ch, CURLOPT_POSTFIELDS, $fields_string);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
 
     //execute post
     $result = curl_exec($ch);
@@ -455,22 +455,38 @@ class VoipTwilioServer extends VoipServer {
 
   static function _get_available_voices() {
     $voices = array();
-    $voices['dave-twilio'] = array('language' => 'en', 'voice' => 'man',
-                        'description' => t('Dave (male voice in English)'));
-    $voices['allison-twilio'] = array('language' => 'en', 'voice' => 'woman',
-                        'description' => t('Allison (female voice in English)'));
-    $voices['jorge-twilio'] = array('language' => 'es', 'voice' => 'man',
-                        'description' => t('Jorge (male voice in Spanish)'));
-    $voices['carmen-twilio'] = array('language' => 'es', 'voice' => 'woman',
-                        'description' => t('Carmen (female voice in Spanish)'));
-    $voices['bernard-twilio'] = array('language' => 'fr', 'voice' => 'man',
-                        'description' => t('Bernard (male voice in French)'));
-    $voices['florence-twilio'] = array('language' => 'fr', 'voice' => 'woman',
-                        'description' => t('Florence (female voice in French)'));
-    $voices['stefan-twilio'] = array('language' => 'de', 'voice' => 'man',
-                        'description' => t('Stefan (male voice in German)'));
-    $voices['katrin-twilio'] = array('language' => 'de', 'voice' => 'woman',
-                        'description' => t('Katrin (female voice in German)'));
+    $voices['dave-twilio'] = array(
+      'language' => 'en', 'voice' => 'man',
+      'description' => t('Dave (male voice in English)')
+    );
+    $voices['allison-twilio'] = array(
+      'language' => 'en', 'voice' => 'woman',
+      'description' => t('Allison (female voice in English)')
+    );
+    $voices['jorge-twilio'] = array(
+      'language' => 'es', 'voice' => 'man',
+      'description' => t('Jorge (male voice in Spanish)')
+    );
+    $voices['carmen-twilio'] = array(
+      'language' => 'es', 'voice' => 'woman',
+      'description' => t('Carmen (female voice in Spanish)')
+    );
+    $voices['bernard-twilio'] = array(
+      'language' => 'fr', 'voice' => 'man',
+      'description' => t('Bernard (male voice in French)')
+    );
+    $voices['florence-twilio'] = array(
+      'language' => 'fr', 'voice' => 'woman',
+      'description' => t('Florence (female voice in French)')
+    );
+    $voices['stefan-twilio'] = array(
+      'language' => 'de', 'voice' => 'man',
+      'description' => t('Stefan (male voice in German)')
+    );
+    $voices['katrin-twilio'] = array(
+      'language' => 'de', 'voice' => 'woman',
+      'description' => t('Katrin (female voice in German)')
+    );
     return $voices;
   }
 }
