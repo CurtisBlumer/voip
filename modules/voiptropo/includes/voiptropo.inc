@@ -31,7 +31,7 @@
  *
  * @return void
  */
- function _voiptropo_call_handler($tropo_action = '', $cid = NULL, $event_type = '') {
+function _voiptropo_call_handler($tropo_action = '', $cid = NULL, $event_type = '') {
   if (voip_debug()) {
     $msg = "in voiptropo_call_handler() with tropo_action: $tropo_action, cid: $cid, event: $event_type";
     watchdog('voiptropo', $msg);
@@ -44,7 +44,7 @@
   // object associated with it
   if ($tropo_action == 'save_record') {
     $file = _voiptropo_file_save_upload();
-	if ($file) {
+    if ($file) {
       $call = VoipCall::load($cid);
       $script = $call->getScript();
       $script->setVar('recording_path', file_create_url($file->uri));
@@ -52,9 +52,9 @@
       $script->setVar('recording_digits', NULL);
       $script->setVar('recording_fid', $file->fid);
       $call->setScript($script);
-	  // update the voipcall with the new values
+      // update the voipcall with the new values
       $call = $call->save();
-	}
+    }
     return;
   }
 
@@ -92,7 +92,7 @@
     $rc = _voiptropo_script_handler($call, $tropo);
 
     // add common event triggers
-	$channel = $call->getCallChannel();
+    $channel = $call->getCallChannel();
     if ($tropo_action != 'process_callstatus' && $channel != 'text') {
       $cid = $call->getCid();
       $response_url = $menu_path . '/process_callstatus/' . $cid . '/error';
@@ -154,13 +154,13 @@ function _voiptropo_script_handler($call, &$tropo) {
       else {
         if ($call->getCallChannel() != 'text') {
           // for voice channel send a final hangup request
-            $tropo->hangup();
-            $msg = 'Script @name ended without a "hangup" command.';
-            $params = array('@name' => $script->getName());
-            watchdog('voiptropo', $msg, $params, WATCHDOG_WARNING);
-            $call->SetCallStatus(VoipCall::COMPLETED);
-            $call->setHangupReason(VoipCall::HANGUP_SCRIPT_END);
-            $call->setEndTime();
+          $tropo->hangup();
+          $msg = 'Script @name ended without a "hangup" command.';
+          $params = array('@name' => $script->getName());
+          watchdog('voiptropo', $msg, $params, WATCHDOG_WARNING);
+          $call->SetCallStatus(VoipCall::COMPLETED);
+          $call->setHangupReason(VoipCall::HANGUP_SCRIPT_END);
+          $call->setEndTime();
         }
       }
       //for text channel don't do anything
@@ -196,7 +196,7 @@ function _voiptropo_script_handler($call, &$tropo) {
             }
             //$call = new VoipCall();
             $call->setDestNumber($number);
-			      $call->setCallerNumber(variable_get('voipcall_cid_number', ''));
+            $call->setCallerNumber(variable_get('voipcall_cid_number', ''));
             $call->setScript($script);
             $call->save();
             voip_dial($call);
@@ -219,7 +219,7 @@ function _voiptropo_script_handler($call, &$tropo) {
             $tropo->transfer($number, $params);
 
             //Add events
-			//Add events
+            //Add events
             $response_url = $menu_path . '/process_dial/' . $cid . '/continue';
             $action = url($response_url, array('absolute' => TRUE));
             $tropo->on(array("event" => "continue", "next" => $action));
@@ -232,7 +232,7 @@ function _voiptropo_script_handler($call, &$tropo) {
             $action = url($response_url, array('absolute' => TRUE));
             $tropo->on(array("event" => "incomplete", "next" => $action));
 
-			$response_url = $menu_path . '/process_hangup/' . $cid;
+            $response_url = $menu_path . '/process_hangup/' . $cid;
             $action = url($response_url, array('absolute' => TRUE));
             $tropo->on(array("event" => "hangup", "next" => $action));
           }
@@ -311,7 +311,7 @@ function _voiptropo_script_handler($call, &$tropo) {
         case 'VoipCmdHangup':
           $call->setCallStatus(VoipCall::COMPLETED);
           $call->setHangupReason(VoipCall::HANGUP_SCRIPT_COMMAND);
-		  $start = $call->getStartTime();
+          $start = $call->getStartTime();
           $end = $call->setEndTime();
           $duration = $end - $start;
           $call->setDuration($duration);
@@ -389,7 +389,7 @@ function _voiptropo_script_handler($call, &$tropo) {
           break;
 
         case 'VoipCmdRecord':
-           $call->setCallStatus(VoipCall::IN_PROGRESS);
+          $call->setCallStatus(VoipCall::IN_PROGRESS);
           $menu_path = 'voip/tropo/callhandler';
           $cid = $call->getCid();
           $format = $script->evalString($cmd->getParam('format'));
@@ -528,7 +528,7 @@ function _voiptropo_script_handler($call, &$tropo) {
           $default_language = $script->getLanguage();
           $default_voice = $script->getVoice();
 
-		  $menu_path = 'voip/tropo/callhandler';
+          $menu_path = 'voip/tropo/callhandler';
           $cid = $call->getCid();
           $response_url = $menu_path . '/process_hangup/' . $cid;
           $action = url($response_url, array('absolute' => TRUE));
@@ -551,10 +551,10 @@ function _voiptropo_script_handler($call, &$tropo) {
               $say_params['voice'] = $voice_id;
               //Solution for Tropo error with sprintf and url encoded strings
               //https://www.tropo.com/bizblog/viewer?&bb-name=tropo_support&bb-q=sprintf&&bb-cid=99&bb-tid=1193463#bb
-              $text = str_replace("%","%%",$text);
+              $text = str_replace("%", "%%", $text);
               $tropo->say($text, $say_params);
 
-			  $tropo->on(array("event" => "hangup", "next" => $action));
+              $tropo->on(array("event" => "hangup", "next" => $action));
             }
           }
           break;
@@ -564,20 +564,20 @@ function _voiptropo_script_handler($call, &$tropo) {
           $to = $script->evalString($cmd->getParam('to'));
           //If "to" is empty then send message to the caller
           if (!$to) {
-              $direction = $call->getDirection();
-              if ($direction == 'inbound') {
-                $to = $script->evalString($script->getVar('caller_number'));
-                $from = $script->evalString($script->getVar('dest_number'));
-              }
-              else {
-                $to = $script->evalString($script->getVar('dest_number'));
-                $from = $script->evalString($script->getVar('caller_number'));
-              }
-              if (!$to) {
-                watchdog('voiptropo', 'Attempt to send '.$network.' to empty number', array(), WATCHDOG_ERROR);
-                $processing = TRUE;
-                break;
-              }
+            $direction = $call->getDirection();
+            if ($direction == 'inbound') {
+              $to = $script->evalString($script->getVar('caller_number'));
+              $from = $script->evalString($script->getVar('dest_number'));
+            }
+            else {
+              $to = $script->evalString($script->getVar('dest_number'));
+              $from = $script->evalString($script->getVar('caller_number'));
+            }
+            if (!$to) {
+              watchdog('voiptropo', 'Attempt to send ' . $network . ' to empty number', array(), WATCHDOG_ERROR);
+              $processing = TRUE;
+              break;
+            }
           }
           $text = $script->evalString($cmd->getParam('text'));
           $network = $script->evalString($cmd->getParam('network'));
@@ -587,18 +587,19 @@ function _voiptropo_script_handler($call, &$tropo) {
             //Use SMS Framework to send SMS message if user enabled this option
             voipscript_send_sms_framework($to, $text);
           }
-          else if ($sms_origin == 'smsframework') {
-            //Use voip_text()
-            $reply = TRUE;
-            //We must unset dest_number because it will be number of SMS Framework gateway
-            $call->setDestNumber('');
-            $call = $call->save();
-            voip_text($text, $call, $reply);
-
-            $call = $call->save();
-          }
           else {
-            //Get from number if not set
+            if ($sms_origin == 'smsframework') {
+              //Use voip_text()
+              $reply = TRUE;
+              //We must unset dest_number because it will be number of SMS Framework gateway
+              $call->setDestNumber('');
+              $call = $call->save();
+              voip_text($text, $call, $reply);
+
+              $call = $call->save();
+            }
+            else {
+              //Get from number if not set
               if (!$from && strtolower($network) == 'sms') {
                 //We need caller id only for sms
                 // Note: If no caller number provided, use the system's number as the default caller id
@@ -606,12 +607,12 @@ function _voiptropo_script_handler($call, &$tropo) {
                 $caller_id = $script->evalString($cmd->getParam('caller_id', $default_cid_number));
                 $from = $caller_id;
               }
-            $params = array(
-              'from' => $from,
-              'to' => $to,
-              'channel' => 'TEXT',
-              'network' => $network,
-            );
+              $params = array(
+                'from' => $from,
+                'to' => $to,
+                'channel' => 'TEXT',
+                'network' => $network,
+              );
               $tropo->message($text, $params);
               //Register events:
               $menu_path = 'voip/tropo/callhandler';
@@ -634,6 +635,7 @@ function _voiptropo_script_handler($call, &$tropo) {
               //$response_url = $menu_path . '/process_hangup/' . $cid ;
               //$action = url($response_url, array('absolute' => TRUE));
               //$tropo->on(array("event" => "hangup", "next" => $action));
+            }
           }
           $rc = TRUE;
           $processing = TRUE;
@@ -664,7 +666,7 @@ function _voiptropo_script_handler($call, &$tropo) {
 
         case 'VoipCmdWait':
           $network = $script->evalString($cmd->getParam('network'));
-          if($network != 'voip') {
+          if ($network != 'voip') {
             watchdog('voiptropo', 'Attempt to call Wait() command in SMS message.', array(), WATCHDOG_ERROR);
             $processing = TRUE;
             break;
@@ -700,14 +702,16 @@ function _voiptropo_script_handler($call, &$tropo) {
 }
 
 function _voiptropo_file_save_upload() {
-  $upload_dir_stream = file_default_scheme() . '://' ;
+  $upload_dir_stream = file_default_scheme() . '://';
   $_FILES['files'] = $_FILES['filename'];
   foreach ($_FILES['files'] as $key => $value) {
-      $_FILES['files'][$key] = array(0 => $value);
+    $_FILES['files'][$key] = array(0 => $value);
   }
-  $validators['file_validate_extensions']=array('mp3', 'wav');
-  if (!$file = file_save_upload(0, $validators, $upload_dir_stream)) {
-    watchdog('audiorecorder_field', "ERROR - file_save_upload failed", array(), WATCHDOG_ERROR);
+  watchdog('debug', "files ".print_r($_FILES,true));
+  //$validators['file_validate_extensions'] = array('mp3', 'wav');
+  $file = file_save_upload(0, $validators, $upload_dir_stream);
+  if (!$file) {
+    watchdog('voiptropo', "ERROR - file_save_upload failed", array(), WATCHDOG_ERROR);
     return NULL;
   }
   return $file;
@@ -921,7 +925,7 @@ function _voiptropo_get_input($type, $call, $cmd, $script, &$tropo) {
     $response_url = $menu_path . '/process_get_input/' . $cid;
     $mode = 'dtmf';
     $num_digits = $script->evalString($cmd->getParam('num_digits'), 1);
-     if (empty($num_digits)) {
+    if (empty($num_digits)) {
       //If empty it means that number of digits is variable:
       $num_digits = 999;
     }
@@ -1022,15 +1026,17 @@ function _voiptropo_handle_new_calls($tropo_action, $session) {
     $channel = 'voice';
     $network = 'voip';
   }
-  else if ($tropo_action == 'process_outbound_text'){
-    $channel = 'text';
-    $network = 'sms';
-  }
   else {
-    // handle process_inbound_calls
-    $tmp = $session->getTo();
-    $channel = strtolower($tmp['channel']);
-    $network = strtolower($tmp['network']);
+    if ($tropo_action == 'process_outbound_text') {
+      $channel = 'text';
+      $network = 'sms';
+    }
+    else {
+      // handle process_inbound_calls
+      $tmp = $session->getTo();
+      $channel = strtolower($tmp['channel']);
+      $network = strtolower($tmp['network']);
+    }
   }
 
   // Determine call origin and destination
@@ -1073,10 +1079,10 @@ function _voiptropo_handle_new_calls($tropo_action, $session) {
   // load the already existing call object, if any
   if ($cid) {
     $call = VoipCall::load($cid);
-	// load global $user based on call user (only if we have $call object)
+    // load global $user based on call user (only if we have $call object)
     global $user;
     $call->loadGlobalUser();
-	if (voip_debug()) {
+    if (voip_debug()) {
       watchdog('voiptropo', 'Logged user %uid in.', array('%uid' => $user->uid));
     }
   }
@@ -1086,7 +1092,8 @@ function _voiptropo_handle_new_calls($tropo_action, $session) {
 
   // handle incoming call requests (both text and voice)
   if ($tropo_action == 'process_inbound_calls' ||
-    $tropo_action == 'process_sms_framework') {
+    $tropo_action == 'process_sms_framework'
+  ) {
     $call_id = $session->getId();
     $call->setCallId($call_id);
     $call->setSource('tropo');
@@ -1121,7 +1128,7 @@ function _voiptropo_handle_new_calls($tropo_action, $session) {
     //Must save call before calling setTextVariables()
     $call = $call->save();
 
-    if($tropo_action == 'process_sms_framework') {
+    if ($tropo_action == 'process_sms_framework') {
       $call->setCallOrigin('smsframework');
     }
 
@@ -1190,9 +1197,10 @@ function _voiptropo_handle_new_calls($tropo_action, $session) {
       $tropo->on(array("event" => "continue", "next" => $action));
        */
     }
-    else if ($tropo_action == 'process_outbound_text'){
+    else {
+      if ($tropo_action == 'process_outbound_text') {
         //When using send_text then $to is already filled from dest_number param
-        if(!$to) {
+        if (!$to) {
           $to = $call->getDestNumber();
         }
 
@@ -1226,6 +1234,7 @@ function _voiptropo_handle_new_calls($tropo_action, $session) {
         $response_url = $menu_path . '/process_hangup/' . $cid;
         $action = url($response_url, array('absolute' => TRUE));
         $tropo->on(array("event" => "hangup", "next" => $action));
+      }
     }
 
     // send the request to Tropo
@@ -1235,7 +1244,8 @@ function _voiptropo_handle_new_calls($tropo_action, $session) {
   else {
     if (($tropo_action == 'process_inbound_calls'
       || $tropo_action == 'process_sms_framework')
-      && strtolower($call->getCallChannel()) == 'text') {
+      && strtolower($call->getCallChannel()) == 'text'
+    ) {
       $script = $call->getScript();
       $text_handler = $script->getVar('text_handler');
       if ($text_handler) {
@@ -1346,7 +1356,7 @@ function _voiptropo_handle_ongoing_calls($result, $tropo_action, $cid, $event_ty
         else {
           $digits = str_replace(" ", "", $result->getValue());
         }
-		$script->setVar('input_digits', $digits);
+        $script->setVar('input_digits', $digits);
         $call->setScript($script);
         break;
       case 'process_record':
@@ -1354,9 +1364,35 @@ function _voiptropo_handle_ongoing_calls($result, $tropo_action, $cid, $event_ty
         //Save record duration
         $rec_actions = $result->getActions();
         $script = $call->getScript();
-        $script->setVar('recording_duration', $rec_actions->duration);
-        if ($tropo_action) {
+        if ($rec_actions->duration) {
+          $duration = (int) ($rec_actions->duration / 1000);
+          $script->setVar('recording_duration', $duration);
+        }
+        else {
+          //Unfortunately, Tropo does not return the audio duration when the
+          //recording is hang up in the middle. Audio file duration need
+          //to be calculated directly using some of the algorithms found on the web.
+          $rec_fid = $script->getVar('recording_fid');
+          $file = file_load($rec_fid);
+          if ($file) {
+            $filepath = drupal_realpath($file->uri);
+            if (preg_match('/\.(mp3)$/i', $file->filename)) {
+              //Mp3 file
+              $mp3 = new mp3file($filepath);
+              $metadata = $mp3->get_metadata();
+              $duration = isset($metadata['Length']) ? $metadata['Length'] : 0;
+            }
+            else {
+              //Wav file
+              $duration = voipcall_get_wav_duration($filepath);
+            }
+            $script->setVar('recording_duration', $duration);
+          }
+        }
+        if ($tropo_action == 'process_record_hangup') {
           $digits = 'hangup';
+          $call->SetCallStatus(VoipCall::COMPLETED);
+          $call->setHangupReason(VoipCall::HANGUP_BY_USER);
         }
         $script->setVar('recording_digits', $digits);
         $call->setScript($script);

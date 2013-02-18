@@ -24,7 +24,7 @@
  *   - process_dial, to handle the response to the "dial" script command
  *   - process_get_input, to handle responses to "get input" script commands
  *   - process_hangup, to handle call termination
- *   - process_record, process_record_mp3 and process_empty_recording, to handle
+ *   - process_record and process_empty_recording, to handle
  *     responses to 'record' script commands
  *   - process_wait, to continue after wait command
  *   - process_sms_callback, to handle final responses to 'send sms'.
@@ -213,7 +213,6 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
     || $plivo_action == 'process_inbound_text'
     || $plivo_action == 'process_sms_framework'
     || $plivo_action == 'process_record'
-    || $plivo_action == 'process_record_mp3'
     || $plivo_action == 'process_empty_recording'
   ) {
     $call->SetCallStatus(VoipCall::IN_PROGRESS);
@@ -265,7 +264,6 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
         $call->setScript($script);
         break;
       case 'process_record':
-      case 'process_record_mp3':
         $script = $call->getScript();
         if($server == 'plivoframework') {
           $plivo_record_url = $_REQUEST['RecordFile'];
@@ -275,18 +273,44 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
           $script->setVar('recording_path', $file_url);
           //We set this to same as recording_path because public url is not available in Plivo
           $script->setVar('recording_public_url', $file_url);
+          $duration = $_REQUEST['RecordingDuration'];
+          $digits = $_REQUEST['Digits'];
         }
         else {
           //Plivo Cloud
           $plivo_record_url = $_REQUEST['RecordUrl'];
           //Transfer the file to local server
           $file = _voipplivocore_transfer_file($plivo_record_url);
-          $script->setVar('recording_path', file_create_url($file->uri));
+          $file_url = file_create_url($file->uri);
+          $script->setVar('recording_path', $file_url);
           $script->setVar('recording_public_url', $plivo_record_url);
+
+          if ($_REQUEST['RecordingDuration'] > 0) {
+            $duration = $_REQUEST['RecordingDuration'];
+            $digits = $_REQUEST['Digits'];
+          }
+          else if ($_REQUEST['RecordingDuration'] == -1){
+            //@RecordingDuration = -1 in case of hangup
+            $digits = 'hangup';
+            $call->SetCallStatus(VoipCall::COMPLETED);
+            $call->setHangupReason(VoipCall::HANGUP_BY_USER);
+            $filepath = drupal_realpath($file->uri);
+            watchdog('debug','filepath '.$filepath);
+            if (preg_match('/\.(mp3)$/i', $file->filename)) {
+              //Mp3 file
+              $mp3 = new mp3file($filepath);
+              $metadata = $mp3->get_metadata();
+              $duration = isset($metadata['Length']) ? $metadata['Length'] : 0;
+            }
+            else {
+              //Wav file
+              $duration = voipcall_get_wav_duration($filepath);
+            }
+          }
         }
         //Common variables
-        $script->setVar('recording_duration', $_REQUEST['RecordingDuration']);
-        $script->setVar('recording_digits', $_REQUEST['Digits']);
+        $script->setVar('recording_duration', $duration);
+        $script->setVar('recording_digits', $digits);
         $script->setVar('recording_fid', $file->fid);
         $call->setScript($script);
 
@@ -709,13 +733,7 @@ function voipplivocore_script_handler($server, $call) {
           $menu_path = 'voip/'.$server.'/callhandler';
           $cid = $call->getCid();
           $format = $script->evalString($cmd->getParam('format'));
-          if ($format == 'mp3') {
-            $response_url = $menu_path . '/process_record_mp3/' . $cid;
-          }
-          else {
-            // return wav file
-            $response_url = $menu_path . '/process_record/' . $cid;
-          }
+          $response_url = $menu_path . '/process_record/' . $cid;
           $action = url($response_url, array('absolute' => TRUE));
           $method = 'POST';
           $prompt = $cmd->getParam('prompt', '');
@@ -733,6 +751,7 @@ function voipplivocore_script_handler($server, $call) {
             . '" finishOnKey="' . $end_key
             . '" maxLength="' . $max_length
             . '" playBeep="' . $play_beep
+            . '" fileFormat="' . $format
             . '" />';
           // in case of empty recording...
           $response_url = $menu_path . '/process_empty_recording/' . $cid;
@@ -1242,7 +1261,14 @@ function _voipplivocore_transfer_file($url) {
   $dest = file_default_scheme() . '://' ;
   $filename = basename($url);
   $file_destination = file_destination($dest . $filename, FILE_EXISTS_RENAME);
+  //File is not immediately available in plivo for download
+  $i = 0;
   $data = file_get_contents($url);
+  while($data === FALSE && $i<=100) {
+    $data = file_get_contents($url);
+    sleep(1);
+    $i++;
+  }
   $file = file_save_data($data, $file_destination);
   return $file;
 }

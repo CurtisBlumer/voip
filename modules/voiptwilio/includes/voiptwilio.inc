@@ -102,6 +102,20 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
     $call = new VoipCall();
   }
 
+  // if the call is already hang up, ignore everything
+  // Note: This happens whenever a call is hang up in the middle of a recording.
+  // In that case, Twilio sends a notification both as part of the record
+  // response as well as via a hangup request
+  $is_hangup = $call->isHangup();
+  if($is_hangup){
+    if (voip_debug()) {
+      $msg = "Call with cid: $cid is already hang up.";
+      $vars = array();
+      watchdog('voiptwilio', $msg, $vars, WATCHDOG_INFO);
+    }
+    return;
+  }
+
   // handle incoming call and text requests
   if ($twilio_action == 'process_inbound_calls') {
     $call_sid = $_REQUEST['CallSid']; // unique identifier of the call, 34 char
@@ -277,6 +291,10 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
         $script->setVar('recording_digits', $_REQUEST['Digits']);
         $script->setVar('recording_fid', $file->fid);
         $call->setScript($script);
+        // check if the call hang up in the middle of the recording
+        if($_REQUEST['Digits'] == 'hangup'){
+          voiptwilio_update_call_status($call, 'completed');
+        }
         break;
       case 'process_empty_recording':
         $script = $call->getScript();
