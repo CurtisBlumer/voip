@@ -707,8 +707,7 @@ function _voiptropo_file_save_upload() {
   foreach ($_FILES['files'] as $key => $value) {
     $_FILES['files'][$key] = array(0 => $value);
   }
-  watchdog('debug', "files ".print_r($_FILES,true));
-  //$validators['file_validate_extensions'] = array('mp3', 'wav');
+  $validators['file_validate_extensions'] = array('mp3 wav');
   $file = file_save_upload(0, $validators, $upload_dir_stream);
   if (!$file) {
     watchdog('voiptropo', "ERROR - file_save_upload failed", array(), WATCHDOG_ERROR);
@@ -1274,7 +1273,6 @@ function _voiptropo_handle_ongoing_calls($result, $tropo_action, $cid, $event_ty
   // 'process_hangup' for incoming calls does not come with a $cid
   if ($tropo_action == 'process_hangup') {
     if (!$cid) {
-//watchdog('debug', "ATTENTION: process_hangup w/ no cid!!");
       // determine the cid based on the Call Id (Tropo session id)
       $call_id = $result->getSessionId();
       $cid = VoipCall::getCidFromCallId($call_id);

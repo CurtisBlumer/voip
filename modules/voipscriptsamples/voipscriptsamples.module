@@ -362,7 +362,7 @@ function _voipscriptsamples_get_record_script() {
   $timeout = 5;
   $end_key = '#';
   $max_length = 20;
-  $format = 'wav';
+  $format = 'mp3';
   $script->addRecord($prompt, $timeout, $end_key, $max_length, $format);
 
   $script->addLog('Back from recording (%voipscript_hangup_callback)');
