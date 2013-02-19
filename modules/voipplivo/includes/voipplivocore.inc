@@ -311,7 +311,8 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
             $duration = $_REQUEST['RecordingDuration'];
             $digits = $_REQUEST['Digits'];
           }
-          else if ($_REQUEST['RecordingDuration'] == -1){
+          else if ($_REQUEST['RecordingDuration'] == -1) {
+            //-1 is undocumented feature, learned about after talking with Plivo support (18.2.2013)
             //@RecordingDuration = -1 in case of hangup
             $digits = 'hangup';
             $filepath = drupal_realpath($file->uri);
