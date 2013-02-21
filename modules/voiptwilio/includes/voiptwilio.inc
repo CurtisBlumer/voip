@@ -867,7 +867,9 @@ function _voiptwilio_script_handler($call) {
                 $response .= '</Sms>';
                 // since the 'action' parameter prevents other commands from
                 // being executed, set $processing to FALSE
-                $processing = FALSE;
+                //$processing = FALSE;
+                //@todo: tamerzg reset this to TRUE otherwise we can't send multiple sms in one request
+                $processing = TRUE;
                 break;
             }
           }
