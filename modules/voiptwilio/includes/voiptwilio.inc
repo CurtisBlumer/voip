@@ -212,6 +212,7 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
         || $twilio_action == 'process_record'
         || $twilio_action == 'process_record_mp3'
         || $twilio_action == 'process_empty_recording'
+        || $twilio_action == 'process_wait'
   ) {
     $call->SetCallStatus(VoipCall::IN_PROGRESS);
   }
@@ -852,9 +853,12 @@ function _voiptwilio_script_handler($call) {
                 break;
 
               case 'sms':
-                $response .= '<Sms action="' . $action
+                /*$response .= '<Sms action="' . $action
                              . '" statusCallback="' . $callback
-                             . '" method="' . $method;
+                             . '" method="' . $method;*/
+                //todo: @tamerzg: temp disabled action attribute, pending #121526
+                $response .= '<Sms statusCallback="' . $callback
+                  . '" method="' . $method;
                 if($to){
                   $response .= '" to="' . $to;
                 }
@@ -868,7 +872,7 @@ function _voiptwilio_script_handler($call) {
                 // since the 'action' parameter prevents other commands from
                 // being executed, set $processing to FALSE
                 //$processing = FALSE;
-                //@todo: tamerzg reset this to TRUE otherwise we can't send multiple sms in one request
+                //@todo: tamerzg temp I set this to TRUE until twilio resolves #121526
                 $processing = TRUE;
                 break;
             }
@@ -935,7 +939,7 @@ function _voiptwilio_send_response($response) {
   $output .= '</Response>';
 
   drupal_add_http_header('Content-Type', 'text/xml; charset=utf-8');
-  //TODO: watchdog('response', htmlspecialchars($output));
+  //watchdog('debug', htmlspecialchars($output));
   print $output;
 
   return TRUE;
