@@ -107,18 +107,10 @@ function voipcall_schema() {
         'type' => 'int',
         'default' => 0,
       ),
-      /*'current_channel' => array(
-        'type' => 'varchar',
-        'length' => 255,
-      ),*/
       'call_channel' => array(
         'type' => 'varchar',
         'length' => 255,
       ),
-      /*'current_network' => array(
-        'type' => 'varchar',
-        'length' => 255,
-      ),*/
       'call_network' => array(
         'type' => 'varchar',
         'length' => 255,

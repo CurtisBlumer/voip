@@ -949,13 +949,7 @@ class VoipCall {
 
     $script->setVar('origin',
       $call_data->call_origin);
-//@todo: check for dependencies in voip scripts
-    /*$script->setVar('current_channel',
-      $call_data->current_channel);
 
-    $script->setVar('current_network',
-      $call_data->current_network);
-*/
     $script->setVar('check_machine',
         $call_data->check_machine);
 
