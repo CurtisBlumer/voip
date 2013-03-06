@@ -665,9 +665,9 @@ function _voiptropo_script_handler($call, &$tropo) {
           break;
 
         case 'VoipCmdWait':
-          $network = $script->evalString($cmd->getParam('network'));
-          if ($network != 'voip') {
-            watchdog('voiptropo', 'Attempt to call Wait() command in SMS message.', array(), WATCHDOG_ERROR);
+          $channel = $call->getCallChannel();
+          if ($channel != 'voice') {
+            watchdog('voiptropo', 'Attempt to call addWait() command in SMS message.', array(), WATCHDOG_ERROR);
             $processing = TRUE;
             break;
           }
