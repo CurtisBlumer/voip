@@ -1024,7 +1024,8 @@ class mp3file
 }
 
 /*
- * Converts special characters into ASCII equivelent if voipcall_sms_unicode is enabled */
+ * Converts special characters into ASCII equivelent if voipcall_sms_unicode is enabled
+ */
 function voipcall_special_chars($string) {
   if (!variable_get('voipcall_sms_unicode', 0)) {
     return $string;
