@@ -110,11 +110,10 @@ class VoipTwilioServer extends VoipServer {
     // Instantiate a new Twilio Rest Client
     $client = new TwilioRestClient($account_sid, $auth_token);
     $response = $client->request($twilio_path, "POST", $vars);
-
     // update call based on response
     if ($response->IsError) {
-      // differentiate between processing errors and higher-level errors
       $twilio_error_code = (string) $response->ResponseXml->RestException->Code;
+      // differentiate between processing errors and higher-level errors
       switch ($twilio_error_code) {
         // the following codes are listed in
         //   http://www.twilio.com/docs/errors/reference/
