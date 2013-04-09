@@ -1209,7 +1209,6 @@ function voipscript_send_sms_framework($to, $text) {
   //Denormalize number
   $op = 'local';
   drupal_alter('voip_number', $to, $op);
-  watchdog('debug' ,"number $to");
 
   $res = sms_send($to, $text);
   if (voip_debug()) {
