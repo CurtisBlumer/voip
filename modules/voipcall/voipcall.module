@@ -81,7 +81,8 @@ function voipcall_permission() {
     ),
     'Use PHP input for VoIP Script (dangerous - grant with care)' => array(
       'title' => t('Use PHP input for VoIP Script (dangerous - grant with care)'),
-      'description' => t('Use PHP input for VoIP Script (dangerous - grant with care)'),
+      'description' => '',
+      'restrict access' => TRUE,
     ),
   );
 }
