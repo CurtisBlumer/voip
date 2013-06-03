@@ -28,7 +28,7 @@ Plivo configuration:
 
   - DEFAULT_HTTP_METHOD = POST
 
-  - DEFAULT_ANSWER_URL = http://mysite.com/voip/plivo/callhandler/ (for clean URLs) or http://mysite.com/?q=voip/plivo/callhandler/
+  - DEFAULT_ANSWER_URL = http://mysite.com/voip/plivoframework/callhandler/ (for clean URLs) or http://mysite.com/?q=voip/plivoframework/callhandler/
 
   - EXTRA_FS_VARS = variable_duration
 
@@ -50,11 +50,11 @@ Drupal configuration:
   - Click on Plivo Framework "configure" link
 
   - Fill in the "Account SID" and "Auth Token" fields with your Plivo "AUTH_ID" and "AUTH_TOKEN" values, respectively (see "Plivo configuration" above)
-  
+
   - If your Plivo is on a different server than Drupal, change the value of "Plivo REST API Url" to the new server's URL
-  
+
   - Optionally, click on "Plivo Outbound Call Parameters" to set up advanced options as per your needs
-  
+
   - Press "Save". That will take you back to admin/voip/servers
 
   - Select the 'Plivo Framework' option
@@ -70,7 +70,7 @@ Drupal configuration:
 
   - Enable the "make outbound calls" permission for the desired roles
 
-  - Press the "save permissions" button   
+  - Press the "save permissions" button
 
 
 == Try it out ==
@@ -79,4 +79,4 @@ Now you should be able to call your VoIP Drupal site on your Plivo's default num
 
 ---
 This module has been originally developed by Leo Burd and Tamer Zoubi under the sponsorship of the MIT Center for Civic Media (http://civic.mit.edu) and Plivo (http://plivo.com).
- 
+
