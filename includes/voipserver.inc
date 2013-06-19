@@ -44,6 +44,10 @@ abstract class VoipServer {
   public static function getDefaultServer() {
     $default_server_id = variable_get('voip_default_server', 'log');
     $default_server = self::getServer($default_server_id);
+    if(!$default_server) {
+      //sometimes if we disabled module, we will get empty default server
+      $default_server = self::getServer('log');
+    }
     return ($default_server);
   }
 
