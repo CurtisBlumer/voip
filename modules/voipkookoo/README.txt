@@ -36,7 +36,7 @@ Drupal configuration:
   - Press the 'set default voip server' button
 
 
-Twilio configuration:
+KooKoo configuration:
 
 1. Login into your KooKoo account
 
