@@ -3,19 +3,18 @@
 
 /**
  * @file
- * Adds support for sending and receiving VoIP requests to and from Twilio.
+ * Adds support for sending and receiving VoIP requests to and from KooKoo.
  */
 
 //-----------------------------------------------------------------------------
 // Public functions
 //-----------------------------------------------------------------------------
-require_once(dirname(__FILE__) . '/includes/voiptwilio.inc');
 
 /**
  * Implements hook_voip_serverinfo().
  */
-function voiptwilio_voipserver_info() {
-  $server = new VoipTwilioServer();
+function voipkookoo_voipserver_info() {
+  $server = new VoipKooKooServer();
   return $server;
 }
 
@@ -23,22 +22,17 @@ function voiptwilio_voipserver_info() {
  * @todo Please document this function.
  * @see http://drupal.org/node/1354
  */
-function voiptwilio_admin_form($configuration) {
-  $form['voiptwilio_account_sid'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Twilio Account SID'),
-    '#description' => t("The account SID provided in your Twilio account dashboard."),
-    '#default_value' => (isset($configuration['voiptwilio_account_sid']) ? $configuration['voiptwilio_account_sid'] : ''),
-  );
+function voipkookoo_admin_form($configuration) {
 
-  $form['voiptwilio_auth_token'] = array(
+  $form['voipkookoo_api_key'] = array(
     '#type' => 'password',
-    '#title' => t('Twilio Auth Token'),
-    '#description' => t("The authorization token provided in your Twilio account dashboard."),
-    '#default_value' => (isset($configuration['voiptwilio_auth_token']) ? $configuration['voiptwilio_auth_token'] : ''),
+    '#title' => t('KooKoo API Key'),
+    '#description' => t("The API Key provided in your KooKoo account dashboard."),
+    '#default_value' => (isset($configuration['voipkookoo_api_key']) ? $configuration['voipkookoo_api_key'] : ''),
   );
 
-  $server = voiptwilio_voipserver_info();
+  $server = voipkookoo_voipserver_info();
+
   $voices = VoipVoice::getVoices(NULL, NULL, NULL, $server->getId());
   $form['voipcall_voice_id'] = array(
     '#type' => 'select',
@@ -48,16 +42,19 @@ function voiptwilio_admin_form($configuration) {
     '#default_value' => $server->getDefaultVoice()->getVoiceId(),
   );
 
-  $man_voices =  VoipVoice::getVoices(NULL, "man", NULL, $server->getId());
+  $woman_voices =  VoipVoice::getVoices(NULL, "woman", NULL, $server->getId());
+  //$man_voices =  VoipVoice::getVoices(NULL, "man", NULL, $server->getId());
   $form['voipcall_man_voice_id'] = array(
     '#type' => 'select',
     '#title' => t('Default man voice'),
     '#description' => t('Man voice to be used in automatic text-to-speech generation.'),
-    '#options' =>  voipcall_get_voices_as_list($man_voices),
-    '#default_value' => $server->getDefaultManVoice()->getVoiceId(),
+    //#todo: man->woman
+    '#options' =>  voipcall_get_voices_as_list($woman_voices),
+    //#todo: man->woman
+    '#default_value' => $server->getDefaultWomanVoice()->getVoiceId(),
   );
 
-  $woman_voices =  VoipVoice::getVoices(NULL, "woman", NULL, $server->getId());
+  //$woman_voices =  VoipVoice::getVoices(NULL, "woman", NULL, $server->getId());
   $form['voipcall_woman_voice_id'] = array(
     '#type' => 'select',
     '#title' => t('Default woman voice'),
@@ -72,20 +69,20 @@ function voiptwilio_admin_form($configuration) {
 /**
  * Validates the submission of the configuration form.
  */
-function voiptwilio_admin_form_validate($form, &$form_state) {
+function voipkookoo_admin_form_validate($form, &$form_state) {
 // preserve the value of the password fields
-  $old_settings = variable_get('voip_twilio_settings', '');
-  $field = 'voiptwilio_auth_token';
+  $old_settings = variable_get('voip_kookoo_settings', '');
+  $field = 'voipkookoo_api_key';
   if (!$form_state['values'][$field]) {
     $form_state['values'][$field] = $old_settings[$field];
   }
 
-  // Send a test request to validate the configuration of the Twilio server
+  // Send a test request to validate the configuration of the KooKoo server
   $values = $form_state['values'];
-  $result = VoipTwilioServer::ping($values);
+  $result = VoipKooKooServer::ping($values);
 
   if (voip_error()) {
-    form_set_error('', t('A Twilio-related error occurred: @error', array('@error' => voip_error_message())));
+    form_set_error('', t('A KooKoo-related error occurred: @error', array('@error' => voip_error_message())));
   }
 }
 
@@ -97,17 +94,19 @@ function voiptwilio_admin_form_validate($form, &$form_state) {
  * @see http://drupal.org/node/1354
  */
 
-function voiptwilio_menu() {
+require_once(dirname(__FILE__) . '/includes/voipkookoo.inc');
+
+function voipkookoo_menu() {
   $items = array();
 
-  $items['voip/twilio/callhandler'] = array(
-    'title' => 'VoIP Twilio call handler',
-    'description' => 'Handles incoming calls from Twilio.',
-    // Note: Since both incoming calls and Twilio responses are received
+  $items['voip/kookoo/callhandler'] = array(
+    'title' => 'VoIP KooKoo call handler',
+    'description' => 'Handles incoming calls from KooKoo.',
+    // Note: Since both incoming calls and KooKoo responses are received
     // via the same callhandler menu, the specific call permissions are to
     // be checked inside the call handler function itself.
     'access callback' => TRUE,
-    'page callback' => '_voiptwilio_call_handler',
+    'page callback' => '_voipkookoo_call_handler',
     'type' => MENU_CALLBACK,
   );
 
@@ -117,10 +116,10 @@ function voiptwilio_menu() {
 /**
  * Implements hook_voip_getvoices().
  */
-function voiptwilio_voip_getvoices($language , $gender, $is_local, $voice_provider) {
+function voipkookoo_voip_getvoices($language , $gender, $is_local, $voice_provider) {
 
-  if($voice_provider && $voice_provider != 'twilio') {
-    //Return empty if filtering by voice provider which is not twilio
+  if($voice_provider && $voice_provider != 'kookoo') {
+    //Return empty if filtering by voice provider which is not kookoo
     return array();
   }
   if($is_local === TRUE) {
@@ -128,7 +127,7 @@ function voiptwilio_voip_getvoices($language , $gender, $is_local, $voice_provid
     return array();
   }
 
-  $voices = VoipTwilioServer::_get_available_voices();
+  $voices = VoipKooKooServer::_get_available_voices();
     //Search
     foreach($voices as $key => $voice) {
     if($language && $gender) {

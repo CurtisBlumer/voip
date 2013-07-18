@@ -1,0 +1,9 @@
+name = "VoIP KooKoo"
+description = "Allows the VoIP Drupal framework to work with the KooKoo service."
+package = VoIP Drupal
+core = 7.x
+
+dependencies[] = voip
+dependencies[] = voipcall
+
+files[] = includes/voipkookooserver.inc
