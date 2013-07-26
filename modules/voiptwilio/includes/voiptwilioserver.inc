@@ -497,6 +497,113 @@ class VoipTwilioServer extends VoipServer {
       'language' => 'de', 'voice' => 'woman',
       'description' => t('Katrin (female voice in German)')
     );
+
+
+    $voices['danish-denmark'] = array(
+      'language' => 'da-DK', 'voice' => 'alice',
+      'description' => t('female voice in Danish')
+    );
+    $voices['german'] = array(
+      'language' => 'de-DE', 'voice' => 'alice',
+      'description' => t('female voice in German')
+    );
+
+    $voices['english-australia'] = array(
+      'language' => 'en-AU', 'voice' => 'alice',
+      'description' => t('female voice in English, Australian')
+    );
+    $voices['english-canada'] = array(
+      'language' => 'en-CA', 'voice' => 'alice',
+      'description' => t('female voice in English, Canadian')
+    );
+    $voices['english-uk'] = array(
+      'language' => 'en-GB', 'voice' => 'alice',
+      'description' => t('female voice in English, UK')
+    );
+    $voices['english-india'] = array(
+      'language' => 'en-IN', 'voice' => 'alice',
+      'description' => t('female voice in English, Indian')
+    );
+    $voices['english-us'] = array(
+      'language' => 'en-US', 'voice' => 'alice',
+      'description' => t('female voice in English, United States')
+    );
+    $voices['catalan'] = array(
+      'language' => 'ca-ES', 'voice' => 'alice',
+      'description' => t('female voice in Catalan, Spanish')
+    );
+    $voices['spanish'] = array(
+      'language' => 'es-ES', 'voice' => 'alice',
+      'description' => t('female voice in Spanish')
+    );
+    $voices['mexico'] = array(
+      'language' => 'es-MX', 'voice' => 'alice',
+      'description' => t('female voice in Spanish, Mexican')
+    );
+    $voices['finland'] = array(
+      'language' => 'fi-FI', 'voice' => 'alice',
+      'description' => t('female voice in Finnish')
+    );
+    $voices['french-canada'] = array(
+      'language' => 'fr-CA', 'voice' => 'alice',
+      'description' => t('female voice in French, Canadian')
+    );
+    $voices['french'] = array(
+      'language' => 'fr-FR', 'voice' => 'alice',
+      'description' => t('female voice in French')
+    );
+    $voices['italy'] = array(
+      'language' => 'it-IT', 'voice' => 'alice',
+      'description' => t('female voice in Italian')
+    );
+    $voices['japan'] = array(
+      'language' => 'ja-JP', 'voice' => 'alice',
+      'description' => t('female voice in Japanese')
+    );
+    $voices['korea'] = array(
+      'language' => 'ko-KR', 'voice' => 'alice',
+      'description' => t('female voice in Korean')
+    );
+    $voices['norwey'] = array(
+      'language' => 'nb-NO', 'voice' => 'alice',
+      'description' => t('female voice in Norwegian')
+    );
+    $voices['dutch'] = array(
+      'language' => 'nl-NL', 'voice' => 'alice',
+      'description' => t('female voice in Dutch, Netherlands')
+    );
+    $voices['poland'] = array(
+      'language' => 'pl-PL', 'voice' => 'alice',
+      'description' => t('female voice in Polish')
+    );
+    $voices['brazil'] = array(
+      'language' => 'pt-BR', 'voice' => 'alice',
+      'description' => t('female voice in Portuguese, Brazilian')
+    );
+    $voices['portugal'] = array(
+      'language' => 'pt-PT', 'voice' => 'alice',
+      'description' => t('female voice in Portuguese')
+    );
+    $voices['russia'] = array(
+      'language' => 'ru-RU', 'voice' => 'alice',
+      'description' => t('female voice in Russian')
+    );
+    $voices['sweden'] = array(
+      'language' => 'sv-SE', 'voice' => 'alice',
+      'description' => t('female voice in Swedish')
+    );
+    $voices['chinese-mandarin'] = array(
+      'language' => 'zh-CN', 'voice' => 'alice',
+      'description' => t('female voice in Chinese (Mandarin)')
+    );
+    $voices['chinese-cantonese'] = array(
+      'language' => 'zh-HK', 'voice' => 'alice',
+      'description' => t('female voice in Chinese (Cantonese)')
+    );
+    $voices['chinese-taiwan'] = array(
+      'language' => 'zh-TW', 'voice' => 'alice',
+      'description' => t('female voice in Chinese (Taiwanese Mandarin)')
+    );
     return $voices;
   }
 }
