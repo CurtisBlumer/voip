@@ -57,7 +57,7 @@ function voiptwilio_admin_form($configuration) {
     '#default_value' => $server->getDefaultManVoice()->getVoiceId(),
   );
 
-  $woman_voices =  VoipVoice::getVoices(NULL, "woman", NULL, $server->getId());
+  $woman_voices =  VoipVoice::getVoices(NULL, "alice", NULL, $server->getId());
   $form['voipcall_woman_voice_id'] = array(
     '#type' => 'select',
     '#title' => t('Default woman voice'),

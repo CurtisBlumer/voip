@@ -54,6 +54,14 @@ KooKoo configuration:
 
 4. In the "Dashboard" section of the account, click on the "Add New Number" link and add a phone number you would like to use for your Drupal site
 
+5. By default Outbound is disabled for all the KooKoo users and if you want to enable outbound for your account please send 
+   a mail to support@kookoo.in with subject as:Enable Outbound and it will be enabled at the earliest for Paid Accounts.
+   KooKoo limits the number of outbound calls to 50/day for some accounts. 
+   Also due to TRAI regulations the calls are not allowed from 9pm to 9am IT.
+   
+6. Inbound SMS can only be used in silver egg and golden egg subscriptions.
+
+
 == About ==
 
-This module was originally designed and implemented by Leo Burd from the MIT Center for Civic Media (http://civic.mit.edu/). 
+This module was originally designed and implemented by Tamer Zoubi and Leo Burd under the sponsorship of Terravoz (http://terravoz.org). 
