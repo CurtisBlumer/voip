@@ -292,7 +292,7 @@ function _voipkookoo_call_handler($kookoo_action = NULL, $cid = NULL) {
           $script->setVar('recording_path', $kookoo_record_url);
           $script->setVar('recording_public_url', $kookoo_record_url);
 
-          $script->setVar('recording_duration', $_REQUEST['duration']);
+          $script->setVar('recording_duration', $_REQUEST['record_duration']);
           //$script->setVar('recording_digits', $_REQUEST['Digits']);
           //$script->setVar('recording_fid', $file->fid);
 
