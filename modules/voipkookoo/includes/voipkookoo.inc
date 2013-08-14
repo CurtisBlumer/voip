@@ -283,8 +283,6 @@ function _voipkookoo_call_handler($kookoo_action = NULL, $cid = NULL) {
         else {
           $kookoo_record_url = $_REQUEST['data'];
 //@todo: Disabled saving the recording as it takes >30sec to download which will cause timeout
-// TODO 2: Is the above really true? When I tried running _voipkookoo_transfer_file() from the devel command line, it seemed to run pretty smoothly. However, the logs are giving the following warning. Shall we use cURL or something else instead? Here's the warning: file_get_contents(http://recordings.kookoo.in/leoburd/1376423246.wav) [function.file-get-contents]: failed to open stream: HTTP request failed! HTTP/1.1 404 Not Found in _voipkookoo_transfer_file() (line 1206 of /data/var/www/d7/sites/all/modules/dev/voipdrupal/modules/voipkookoo/includes/voipkookoo.inc).
-
 /*****
           //Transfer the file to local server
           $file = _voipkookoo_transfer_file($kookoo_record_url);
@@ -1203,6 +1201,7 @@ function _voipkookoo_numbers_add_space($matches) {
 
 /*Save the audio file from KooKoo to local server*/
 function _voipkookoo_transfer_file($url) {
+watchdog('debug', "url to download: $url");
   $dest = file_default_scheme() . '://' ;
   $filename = basename($url);
   $file_destination = file_destination($dest . $filename, FILE_EXISTS_RENAME);
@@ -1216,6 +1215,7 @@ function _voipkookoo_transfer_file($url) {
   }
   watchdog('debug', "File downloaed after $i attempts");
   $file = file_save_data($data, $file_destination);
+watchdog('debug', "File: " . print_r($file, TRUE));
   return $file;
 }
 
