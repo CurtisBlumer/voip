@@ -61,8 +61,8 @@ function _voipkookoo_call_handler($kookoo_action = NULL, $cid = NULL) {
     $channel = 'text';
     $network = 'sms';
     $from = $_REQUEST['cid'];
-    //@todo: there is no to field in Kookoo, but we might have it if from SMS framework
-    $to = $_REQUEST['To'];
+    //there is no to field in Kookoo, but we might have it if from SMS framework
+    $to = isset($_REQUEST['To']) ? $_REQUEST['To'] : variable_get('voipcall_cid_number', NULL);
   }
   else {
     $channel = 'voice';
@@ -760,7 +760,7 @@ function _voipkookoo_script_handler($call) {
             $voice_id = $script->getVoice();
             //KooKoo uses gender instead of voice id
             $voice = VoipVoice::getVoice($voice_id);
-            $voice_id = _voipkookoo_get_tropo_voice_id($voice_id);
+            $voice_id = _voipkookoo_get_kookoo_voice_id($voice_id);
             //$gender = $voice->getGender();
             $language = $voice->getLanguage();
             $text = 'Processing error. Please contact your system administrator.';
@@ -790,6 +790,34 @@ function _voipkookoo_script_handler($call) {
           $loop = $script->evalString($cmd->getParam('loop'));
           $response .=
             _voipkookoo_generate_audio_response($script, $prompt, $loop);
+          break;
+
+        case 'VoipCmdSayAs':
+          $server = VoipServer::getServer('kookoo');
+          $server_config = $server->getConfig();
+          $say_as_voice = $server_config['voipcall_sayas_voice_id'];
+          $call->setCallStatus(VoipCall::IN_PROGRESS);
+          $prompt = $cmd->getParam('prompt');
+          $loop = $script->evalString($cmd->getParam('loop'));
+          $format = $script->evalString($cmd->getParam('format'));
+          switch($format) {
+            case 'date':
+              $format_code = 202;
+              break;
+            case 'number':
+              $format_code = 1;
+              break;
+            case 'digit':
+              $format_code = 501;
+              break;
+            case 'currency':
+              $format_code = 402;
+              break;
+
+          }
+          for($i=0;$i<$loop;$i++) {
+            $response .= '<say-as format="'.$format_code.'" lang="'.$say_as_voice.'">'.$prompt.'</say-as>';
+          }
           break;
 
         case 'VoipCmdSendText':
@@ -1119,7 +1147,7 @@ function _voipkookoo_generate_audio_response($script, $prompt, $loop = 1) {
     $text = $script->evalString($p->getText());
     $voice_id = $p->getVoice() ? $p->getVoice() : $default_voice_id;
     $voice = VoipVoice::getVoice($voice_id);
-    $voice_id = _voipkookoo_get_tropo_voice_id($voice_id);
+    $voice_id = _voipkookoo_get_kookoo_voice_id($voice_id);
     //$gender = $voice->getGender();
     //$language = $voice->getLanguage();
 
@@ -1150,7 +1178,11 @@ function _voipkookoo_generate_audio_response($script, $prompt, $loop = 1) {
             if ($as == 'digits') {
               //Convert numbers into digits
               $element = _voipkookoo_parse_numbers($element);
+              //$response .= '<say-as format="501" lang="'.$say_as_voice.'">'.$element.'</say-as>';
             }
+            /*else if($as == 'number') {
+              $response .= '<say-as format="1" lang="'.$say_as_voice.'">'.$element.'</say-as>';
+            }*/
             //$response .= "<Say voice='$gender' language='$language'>$element</Say>";
             //@todo: VoIP KooKoo:Very soon we will add attributes to this tag to allow you choose the language, TTS engine as well as male or female voice.
             $response .= "<playtext lang='".$voice_id."'>$element</playtext>";
@@ -1212,7 +1244,7 @@ function _voipkookoo_transfer_file($url) {
 }
 
 //Get safe voice Tropo
-function _voipkookoo_get_tropo_voice_id($voice_id) {
+function _voipkookoo_get_kookoo_voice_id($voice_id) {
   //we need to get safe voice id
   $server = VoipServer::getServer('kookoo');
   $tropo_voices = $server->_get_available_voices();
@@ -1242,7 +1274,7 @@ function _voipkookoo_event_to_actions($event) {
     //@todo:??
     'Disconnect' => 'process_hangup',
     'Dial' => 'process_dial',
-    'NewSMS' => 'process_inbound_text',
+    'NewSms' => 'process_inbound_text',
   );
 
   return $events[$event];

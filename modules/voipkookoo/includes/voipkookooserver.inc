@@ -223,7 +223,8 @@ watchdog('debug', 'dial url '.$kookoo_url);
     curl_close ($ch);
 
     $xml = new SimpleXmlElement($response);
-    watchdog('debug', "dial response ".print_r($xml,true));
+    watchdog('debug', "send text response ".print_r($xml,true));
+    watchdog('debug', "url ".$kookoo_url);
 
     if ($xml->status == 'error') {
       $error_msg = (string) $xml->message;

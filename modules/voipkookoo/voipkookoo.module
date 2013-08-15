@@ -5,6 +5,7 @@
  * @file
  * Adds support for sending and receiving VoIP requests to and from KooKoo.
  */
+module_load_include('inc', 'voipkookoo', 'includes/voipkookooscript');
 
 //-----------------------------------------------------------------------------
 // Public functions
@@ -61,6 +62,26 @@ function voipkookoo_admin_form($configuration) {
     '#description' => t('Woman voice to be used in automatic text-to-speech generation.'),
     '#options' =>  voipcall_get_voices_as_list($woman_voices),
     '#default_value' => $server->getDefaultWomanVoice()->getVoiceId(),
+  );
+
+  //KooKoo supports different voices for sayas command
+  $form['voipcall_sayas_voice_id'] = array(
+    '#type' => 'select',
+    '#title' => t('Voice used for number and dates'),
+    '#description' => t('Voice to be used used for number and dates.'),
+    '#options' =>  array(
+      'EN' => 'English',
+      'HI' => 'Hindi ',
+      'KA' => 'Kannada',
+      'ML' => 'Malayalam',
+      'TE' => 'Telugu ',
+      'TN' => 'Tamil',
+      'GUJ' => 'Gujarati',
+      'BN' => 'Benagali',
+      'MR' => 'Marathi',
+      'ORI' => 'Oriya',
+    ),
+    '#default_value' => $configuration['voipcall_sayas_voice_id'],
   );
 
   return $form;
@@ -156,4 +177,36 @@ function voipkookoo_voip_getvoices($language , $gender, $is_local, $voice_provid
   }
 
   return $voipvoices;
+}
+
+/**
+ * Implements hook_voipcall_load_script().
+ */
+function voipkookoo_voipscript_load_script($script_name, $vars = NULL) {
+
+  $script = NULL;
+  switch ($script_name) {
+    case 'voipkookoo_sayas':
+      $script = new VoipKooKooScript('voipkookoo_sayas');
+      $script->addSay('Reading as date');
+      $script->addSayAs('20110721', 'date');
+      $script->addSay('Reading as number');
+      $script->addSayAs('20110721', 'number');
+      $script->addSay('Reading as digit');
+      $script->addSayAs('20110721', 'digit');
+      $script->addSay('Reading as currency');
+      $script->addSayAs('44', 'currency');
+      $script->addHangup();
+      break;
+  }
+
+  return $script;
+}
+
+/**
+ * Implements hook_voipscript_get_script_names().
+ */
+function voipkookoo_voipscript_get_script_names() {
+  $script_names[] = 'voipkookoo_sayas';
+  return $script_names;
 }

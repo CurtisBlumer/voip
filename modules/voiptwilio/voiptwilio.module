@@ -133,7 +133,11 @@ function voiptwilio_voip_getvoices($language , $gender, $is_local, $voice_provid
     foreach($voices as $key => $voice) {
     if($language && $gender) {
       //Search by language and gender
+
       $genders = array($gender, 'neutral');
+      if($gender == 'woman') {
+        $genders[] = 'alice';
+      }
       if($voice['language'] == $language && in_array($voice['voice'], $genders)) {
         $voipvoices[$key] = new VoipVoice($key, $voice['voice'], $voice['language'], $voice['description']);
       }
@@ -147,6 +151,9 @@ function voiptwilio_voip_getvoices($language , $gender, $is_local, $voice_provid
     else if($gender) {
        //Search by gender
        $genders = array($gender, 'neutral');
+      if($gender == 'woman') {
+        $genders[] = 'alice';
+      }
       if(in_array($voice['voice'], $genders)) {
         $voipvoices[$key] = new VoipVoice($key, $voice['voice'], $voice['language'], $voice['description']);
       }
