@@ -282,27 +282,33 @@ function _voipkookoo_call_handler($kookoo_action = NULL, $cid = NULL) {
         }
         else {
           $kookoo_record_url = $_REQUEST['data'];
+//@todo: Disabled saving the recording as it takes >30sec to download which will cause timeout
+/*****
           //Transfer the file to local server
-          /*$file = _voipkookoo_transfer_file($kookoo_record_url);
+          $file = _voipkookoo_transfer_file($kookoo_record_url);
           $script->setVar('recording_path', file_create_url($file->uri));
-          //Kookoo recordings are hosted only for one day, so we don't use public url
-          $script->setVar('recording_public_url', file_create_url($file->uri));*/
+          //Kookoo recordings are hosted only for one day, so we don't use their public url
+          $script->setVar('recording_public_url', file_create_url($file->uri));
+*****/
 
-          //@todo: disabled saving the prompts as it takes >30sec to download which will cause timeout
-          $script->setVar('recording_path', $kookoo_record_url);
-          $script->setVar('recording_public_url', $kookoo_record_url);
+// TODO: As a temporary solution, use the KooKoo audio URL. Unfortunately, we'll need a longer term solution and an fid. That might involve setting up a cron job to download the audio file and then associating it with the remote url (or the cid of the call). The rest of the system might have to use that URL to make sure the file has already been downloaded before using it. Are there modules that implement that sort of functionality?
 
-          $script->setVar('recording_duration', $_REQUEST['duration']);
+         $script->setVar('recording_path', $kookoo_record_url);
+         $script->setVar('recording_public_url', $kookoo_record_url);
+
+          $script->setVar('recording_duration', $_REQUEST['record_duration']);
+
+          // NOTE: unlike other providers, KooKoo does not return the digit pressed
           //$script->setVar('recording_digits', $_REQUEST['Digits']);
-          //$script->setVar('recording_fid', $file->fid);
 
-          // check if the call hang up in the middle of the recording
-          /*if($_REQUEST['Digits'] == 'hangup'){
-            voipkookoo_update_call_status($call, 'completed');
-          }*/
+//TODO: how to get an fid for the recording? Shall we temporarily store the remote URL, use cron to move the file to the local server, and then update the file information?
+          $script->setVar('recording_fid', $file->fid);
+
+          // check the hangup event for the cases where the call ends in the middle of the recording
         }
         $call->setScript($script);
         break;
+
     //@todo: currently we don't have sms
       case 'process_send_sms':
       case 'process_sms_callback':
@@ -1227,6 +1233,7 @@ function _voipkookoo_numbers_add_space($matches) {
 
 /*Save the audio file from KooKoo to local server*/
 function _voipkookoo_transfer_file($url) {
+watchdog('debug', "url to download: $url");
   $dest = file_default_scheme() . '://' ;
   $filename = basename($url);
   $file_destination = file_destination($dest . $filename, FILE_EXISTS_RENAME);
@@ -1240,6 +1247,7 @@ function _voipkookoo_transfer_file($url) {
   }
   watchdog('debug', "File downloaed after $i attempts");
   $file = file_save_data($data, $file_destination);
+watchdog('debug', "File: " . print_r($file, TRUE));
   return $file;
 }
 
