@@ -13,7 +13,7 @@ In order to install the voipkookoo.module, you will need:
 
 2. The PHP Curl extension in your system. For Debian systems, just run
   $ sudo apt-get install php5-curl
-  $ sudo /etc/init.d/apache2 restart 
+  $ sudo /etc/init.d/apache2 restart
 
 
 == Installation ==
@@ -97,4 +97,4 @@ KooKoo configuration:
 
 == About ==
 
-This module was originally designed and implemented by Tamer Zoubi and Leo Burd under the sponsorship of Terravoz (http://terravoz.org). 
+This module was originally designed and implemented by Tamer Zoubi and Leo Burd under the sponsorship of Terravoz (http://terravoz.org).

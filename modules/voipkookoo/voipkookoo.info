@@ -6,4 +6,6 @@ core = 7.x
 dependencies[] = voip
 dependencies[] = voipcall
 
+files[] = includes/voipkookooscript.inc
 files[] = includes/voipkookooserver.inc
+
