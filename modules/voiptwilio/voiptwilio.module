@@ -57,7 +57,7 @@ function voiptwilio_admin_form($configuration) {
     '#default_value' => $server->getDefaultManVoice()->getVoiceId(),
   );
 
-  $woman_voices =  VoipVoice::getVoices(NULL, "alice", NULL, $server->getId());
+  $woman_voices =  VoipVoice::getVoices(NULL, "woman", NULL, $server->getId());
   $form['voipcall_woman_voice_id'] = array(
     '#type' => 'select',
     '#title' => t('Default woman voice'),
@@ -129,12 +129,13 @@ function voiptwilio_voip_getvoices($language , $gender, $is_local, $voice_provid
   }
 
   $voices = VoipTwilioServer::_get_available_voices();
+  $voipvoices = array();
     //Search
     foreach($voices as $key => $voice) {
     if($language && $gender) {
       //Search by language and gender
       $genders = array($gender, 'neutral');
-      if($voice['language'] == $language && in_array($voice['voice'], $genders)) {
+      if($voice['language'] == $language && in_array($voice['gender'], $genders)) {
         $voipvoices[$key] = new VoipVoice($key, $voice['voice'], $voice['language'], $voice['description']);
       }
     }
@@ -147,7 +148,7 @@ function voiptwilio_voip_getvoices($language , $gender, $is_local, $voice_provid
     else if($gender) {
        //Search by gender
        $genders = array($gender, 'neutral');
-      if(in_array($voice['voice'], $genders)) {
+      if(in_array($voice['gender'], $genders)) {
         $voipvoices[$key] = new VoipVoice($key, $voice['voice'], $voice['language'], $voice['description']);
       }
     }

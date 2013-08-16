@@ -2,6 +2,8 @@
 
 The voipkookoo.module makes it possible for the VoIP Drupal platform to make and receive calls via the KooKoo Cloud Telephony service (http://www.kookoo.in/).
 
+Please check the "Important notes" section below for specific attributes and limitations of the KooKoo server.
+
 
 == Requirements ==
 
@@ -38,29 +40,60 @@ Drupal configuration:
 
 KooKoo configuration:
 
-1. Login into your KooKoo account
+1. Go to the KooKoo website and login into your KooKoo account
 
-2. Click on the "Settings" section.
+2. Add a new phone number
+   - Click on the "Dashboard" section
 
-3. Set the URLs associated with your site
+   - Click on the "Add New Number" button and follow the instructions
+
+   - Associate your site URL with the new number. 
+     Use http://mysite.com/voip/kookoo/callhandler/ (for clean URLs)
+     or http://mysite.com/?q=voip/kookoo/callhandler/ (for non-clean URLs)
+
+   - Press the "save" button
+
+3. Enable outbound calls
+   - By default outbound calling is disabled for all the KooKoo users. To 
+     enable outbound for your account please send an email to support@kookoo.in
+     with subject "Enable Outbound"
+
+4. Configure KooKoo to send SMS messages
+
+5. Configure KooKoo to receive SMS messages
+  - Note that inbound SMS can only be received in Silver Egg and Golden Egg subscriptions.
+
+  - Also, only one SMS code can be used per KooKoo account. You need to maintain multiple 
+    KooKoo accounts to associate different codes with different URLs
+
+  - Click on the "Settings" section.
 
   - Fill the "Application URL" field with
-    http://mysite.com/voip/kookoo/callhandler/process_inbound_calls/ (for clean URLs)
-    or http://mysite.com/?q=voip/kookoo/callhandler/process_inbound_calls/
-   
+    http://mysite.com/voip/kookoo/callhandler/ (for clean URLs)
+    or http://mysite.com/?q=voip/kookoo/callhandler/
+
+  - Fill the "Keyword" field with the keyword that will be used to identify
+    your application whenever an SMS is sent to KooKoo's central SMS number.
+    More specifically, you should ask your users to send an SMS to 
+    0-922-750-751-2 with "your_keyword <space> message" as a message.
+
   - Press the "Save" button
 
-  - Enjoy!
 
-4. In the "Dashboard" section of the account, click on the "Add New Number" link and add a phone number you would like to use for your Drupal site
+== Important notes ==
 
-5. By default Outbound is disabled for all the KooKoo users and if you want to enable outbound for your account please send 
-   a mail to support@kookoo.in with subject as:Enable Outbound and it will be enabled at the earliest for Paid Accounts.
-   KooKoo limits the number of outbound calls to 50/day for some accounts. 
-   Also due to TRAI regulations the calls are not allowed from 9pm to 9am IT.
+* KooKoo limits the amount of outbound calls to 50/day per number. It is
+  possible to increase that limit by either making a special request to 
+  KooKoo or using multiple phone lines.
+
+* Due to TRAI regulations, calls are not allowed from 9pm to 9am IT.
+
+* KooKoo does not support SMS sent to international numbers outside India
+
+* The following commands are currently not supported:
+  - VoipScript::addDial();
+  - voip_hangup();
    
-6. Inbound SMS can only be used in silver egg and golden egg subscriptions.
-
 
 == About ==
 

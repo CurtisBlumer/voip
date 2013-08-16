@@ -244,4 +244,36 @@ abstract class VoipServer {
    */
   abstract function ping($server_config=NULL);
 
+  /**
+   * Transfer an external file to a temporary local file and execute a callback.
+   *
+   * Intended for use when a message has been recorded on the server, and needs
+   * to be stored or otherwise processed locally.
+   *
+   * @param string $audio_url
+   *   The full url to the externally hosted file. This will usually be the
+   *   value returned as the %recording_public_url, which must be a full url
+   *   including schema.
+   * @param callable $callback_function
+   *   Function to call after the file has been copied. Callback called with
+   *   arguments:
+   *    - &$file; the file object,
+   *    - $url; the url it has been downloaded from,
+   *    - $args; arguments array, see next.
+   * @param array $args
+   *   Optional. Arguments to be passed to the callback. Normally including
+   *   'recording_duration' and any other known paramaters.
+   */
+  static function audioFileMover($audio_url, $callback_function, $args = array()) {
+    $queue = DrupalQueue::get('voipdrupal_audiofilemover');
+    $queue->createQueue();
+
+    $item = array(
+      'audio_url' => $audio_url,
+      'callback_function' => $callback_function,
+      'args' => $args,
+    );
+
+    $queue->createItem($item);
+  }
 }

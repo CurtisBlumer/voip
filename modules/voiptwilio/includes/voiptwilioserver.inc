@@ -456,141 +456,175 @@ class VoipTwilioServer extends VoipServer {
     $voices = array();
     $voices['dave-twilio'] = array(
       'language' => 'en', 'voice' => 'man',
+      'gender' => 'man',
       'description' => t('Dave (male voice in English)')
     );
     $voices['allison-twilio'] = array(
       'language' => 'en', 'voice' => 'woman',
+      'gender' => 'woman',
       'description' => t('Allison (female voice in English)')
     );
     $voices['jorge-twilio'] = array(
       'language' => 'es', 'voice' => 'man',
+      'gender' => 'man',
       'description' => t('Jorge (male voice in Spanish)')
     );
     $voices['carmen-twilio'] = array(
       'language' => 'es', 'voice' => 'woman',
+      'gender' => 'woman',
       'description' => t('Carmen (female voice in Spanish)')
     );
     $voices['bernard-twilio'] = array(
       'language' => 'fr', 'voice' => 'man',
+      'gender' => 'man',
       'description' => t('Bernard (male voice in French)')
     );
     $voices['florence-twilio'] = array(
       'language' => 'fr', 'voice' => 'woman',
+      'gender' => 'woman',
       'description' => t('Florence (female voice in French)')
     );
     $voices['stefan-twilio'] = array(
       'language' => 'de', 'voice' => 'man',
+      'gender' => 'man',
       'description' => t('Stefan (male voice in German)')
     );
     $voices['katrin-twilio'] = array(
       'language' => 'de', 'voice' => 'woman',
+      'gender' => 'woman',
       'description' => t('Katrin (female voice in German)')
     );
 
     $voices['danish-denmark'] = array(
       'language' => 'da-DK', 'voice' => 'alice',
-      'description' => t('female voice in Danish')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in Danish)')
     );
     $voices['german'] = array(
       'language' => 'de-DE', 'voice' => 'alice',
-      'description' => t('female voice in German')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in German)')
     );
 
     $voices['english-australia'] = array(
       'language' => 'en-AU', 'voice' => 'alice',
-      'description' => t('female voice in English, Australian')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in English, Australia)')
     );
     $voices['english-canada'] = array(
       'language' => 'en-CA', 'voice' => 'alice',
-      'description' => t('female voice in English, Canadian')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in English, Canada)')
     );
     $voices['english-uk'] = array(
       'language' => 'en-GB', 'voice' => 'alice',
-      'description' => t('female voice in English, UK')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in English, UK)')
     );
     $voices['english-india'] = array(
       'language' => 'en-IN', 'voice' => 'alice',
-      'description' => t('female voice in English, Indian')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in English, India)')
     );
     $voices['english-us'] = array(
       'language' => 'en-US', 'voice' => 'alice',
-      'description' => t('female voice in English, United States')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in English, US)')
     );
     $voices['catalan'] = array(
       'language' => 'ca-ES', 'voice' => 'alice',
-      'description' => t('female voice in Catalan, Spanish')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in Catalan)')
     );
-    $voices['spanish'] = array(
+    $voices['spanish-spain'] = array(
       'language' => 'es-ES', 'voice' => 'alice',
-      'description' => t('female voice in Spanish')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in Spanish, Spain)')
     );
-    $voices['mexico'] = array(
+    $voices['spanish-mexico'] = array(
       'language' => 'es-MX', 'voice' => 'alice',
-      'description' => t('female voice in Spanish, Mexican')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in Spanish, Mexico)')
     );
-    $voices['finland'] = array(
+    $voices['finnish'] = array(
       'language' => 'fi-FI', 'voice' => 'alice',
-      'description' => t('female voice in Finnish')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in Finnish)')
     );
     $voices['french-canada'] = array(
       'language' => 'fr-CA', 'voice' => 'alice',
-      'description' => t('female voice in French, Canadian')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in French, Canada)')
     );
-    $voices['french'] = array(
+    $voices['french-france'] = array(
       'language' => 'fr-FR', 'voice' => 'alice',
-      'description' => t('female voice in French')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in French, France)')
     );
-    $voices['italy'] = array(
+    $voices['italian'] = array(
       'language' => 'it-IT', 'voice' => 'alice',
-      'description' => t('female voice in Italian')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in Italian)')
     );
-    $voices['japan'] = array(
+    $voices['japanese'] = array(
       'language' => 'ja-JP', 'voice' => 'alice',
-      'description' => t('female voice in Japanese')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in Japanese)')
     );
-    $voices['korea'] = array(
+    $voices['korean'] = array(
       'language' => 'ko-KR', 'voice' => 'alice',
-      'description' => t('female voice in Korean')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in Korean)')
     );
-    $voices['norwey'] = array(
+    $voices['norwegian'] = array(
       'language' => 'nb-NO', 'voice' => 'alice',
-      'description' => t('female voice in Norwegian')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in Norwegian)')
     );
     $voices['dutch'] = array(
       'language' => 'nl-NL', 'voice' => 'alice',
-      'description' => t('female voice in Dutch, Netherlands')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in Dutch, Netherlands)')
     );
-    $voices['poland'] = array(
+    $voices['polish'] = array(
       'language' => 'pl-PL', 'voice' => 'alice',
-      'description' => t('female voice in Polish')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in Polish)')
     );
-    $voices['brazil'] = array(
+    $voices['portuguese-brazil'] = array(
       'language' => 'pt-BR', 'voice' => 'alice',
-      'description' => t('female voice in Portuguese, Brazilian')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in Portuguese, Brazil)')
     );
-    $voices['portugal'] = array(
+    $voices['portuguese-portugal'] = array(
       'language' => 'pt-PT', 'voice' => 'alice',
-      'description' => t('female voice in Portuguese')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in Portuguese, Portugal)')
     );
-    $voices['russia'] = array(
+    $voices['russian'] = array(
       'language' => 'ru-RU', 'voice' => 'alice',
-      'description' => t('female voice in Russian')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in Russian)')
     );
-    $voices['sweden'] = array(
+    $voices['swedish'] = array(
       'language' => 'sv-SE', 'voice' => 'alice',
-      'description' => t('female voice in Swedish')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in Swedish)')
     );
     $voices['chinese-mandarin'] = array(
       'language' => 'zh-CN', 'voice' => 'alice',
-      'description' => t('female voice in Chinese (Mandarin)')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in Chinese - Mandarin)')
     );
     $voices['chinese-cantonese'] = array(
       'language' => 'zh-HK', 'voice' => 'alice',
-      'description' => t('female voice in Chinese (Cantonese)')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in Chinese  - Cantonese)')
     );
     $voices['chinese-taiwan'] = array(
       'language' => 'zh-TW', 'voice' => 'alice',
-      'description' => t('female voice in Chinese (Taiwanese Mandarin)')
+      'gender' => 'woman',
+      'description' => t('Alice (female voice in Chinese - Taiwanese Mandarin)')
     );
     return $voices;
   }
