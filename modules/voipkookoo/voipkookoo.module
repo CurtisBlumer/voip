@@ -73,10 +73,10 @@ function voipkookoo_admin_form($configuration) {
     '#description' => t('Voice to be used used for number and dates.'),
     '#options' =>  array(
       'EN' => 'English',
-      'HI' => 'Hindi ',
+      'HI' => 'Hindi',
       'KA' => 'Kannada',
       'ML' => 'Malayalam',
-      'TE' => 'Telugu ',
+      'TE' => 'Telugu',
       'TN' => 'Tamil',
       'GUJ' => 'Gujarati',
       'BN' => 'Benagali',
@@ -84,6 +84,16 @@ function voipkookoo_admin_form($configuration) {
       'ORI' => 'Oriya',
     ),
     '#default_value' => $configuration['voipcall_sayas_voice_id'],
+  );
+
+  $form['voipcall_sayas_enabled'] = array(
+    '#type' => 'radios',
+    '#title' => t('Voice used for number and dates'),
+    '#options' =>  array(
+      1 => 'Use one of above voices',
+      0 => 'Use default script language',
+    ),
+    '#default_value' => isset($configuration['voipcall_sayas_enabled']) ? $configuration['voipcall_sayas_enabled'] : 0,
   );
 
   return $form;
@@ -198,6 +208,11 @@ function voipkookoo_voipscript_load_script($script_name, $vars = NULL) {
       $script->addSayAs('20110721', 'digit');
       $script->addSay('Reading as currency');
       $script->addSayAs('44', 'currency');
+
+      $script->addSay('Reading number in Hindi');
+      $script->addSayAs('20110721', 'number', 'HI');
+      $script->addSay('Reading digit in Tamil');
+      $script->addSayAs('20110721', 'digit', 'TN');
       $script->addHangup();
       break;
   }

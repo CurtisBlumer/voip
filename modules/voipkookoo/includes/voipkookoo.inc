@@ -805,8 +805,9 @@ function _voipkookoo_script_handler($call) {
           $say_as_voice = $server_config['voipcall_sayas_voice_id'];
           $call->setCallStatus(VoipCall::IN_PROGRESS);
           $prompt = $cmd->getParam('prompt');
-          $loop = $script->evalString($cmd->getParam('loop'));
           $format = $script->evalString($cmd->getParam('format'));
+          $voice_id = $script->evalString($cmd->getParam('voice'));
+          $voice_id = !empty($voice_id) ? $voice_id : $say_as_voice;
           switch($format) {
             case 'date':
               $format_code = 202;
@@ -822,9 +823,7 @@ function _voipkookoo_script_handler($call) {
               break;
 
           }
-          for($i=0;$i<$loop;$i++) {
-            $response .= '<say-as format="'.$format_code.'" lang="'.$say_as_voice.'">'.$prompt.'</say-as>';
-          }
+          $response .= '<say-as format="'.$format_code.'" lang="'.$voice_id.'">'.$prompt.'</say-as>';
           break;
 
         case 'VoipCmdSendText':
@@ -1133,6 +1132,10 @@ define('VOIPKOOKOO_URL_CHECK', '#(https?://\S+(?<![,.;?\:\!]))#');
  *   The prompt as a KooKooML sequence to be sent to KooKoo
  */
 function _voipkookoo_generate_audio_response($script, $prompt, $loop = 1) {
+  $server = VoipServer::getServer('kookoo');
+  $server_config = $server->getConfig();
+  $voipcall_sayas_enabled = $server_config['voipcall_sayas_enabled'];
+  //$say_as_voice = $server_config['voipcall_sayas_voice_id'];
   $response = '';
   if (is_string($prompt) && (substr($prompt, 0, 1) == '^')) {
     $prompt = $script->evalString($prompt);
@@ -1184,12 +1187,13 @@ function _voipkookoo_generate_audio_response($script, $prompt, $loop = 1) {
           if ($element) {
             if ($as == 'digits') {
               //Convert numbers into digits
-              $element = _voipkookoo_parse_numbers($element);
-              //$response .= '<say-as format="501" lang="'.$say_as_voice.'">'.$element.'</say-as>';
+              $element = _voipkookoo_parse_digits($element);
             }
-            /*else if($as == 'number') {
-              $response .= '<say-as format="1" lang="'.$say_as_voice.'">'.$element.'</say-as>';
-            }*/
+            else if($as == 'number') {
+              if ($voipcall_sayas_enabled) {
+                $element = _voipkookoo_parse_numbers($element);
+              }
+            }
             //$response .= "<Say voice='$gender' language='$language'>$element</Say>";
             //@todo: VoIP KooKoo:Very soon we will add attributes to this tag to allow you choose the language, TTS engine as well as male or female voice.
             $response .= "<playtext lang='".$voice_id."'>$element</playtext>";
@@ -1223,13 +1227,41 @@ function _voipkookoo_is_url($str) {
 function _voipkookoo_parse_numbers($str) {
   //preg_match_all("{(\d+)}", $str, $result, PREG_PATTERN_ORDER);
   //return $result;
-  return preg_replace_callback('{(\d+)}', '_voipkookoo_numbers_add_space', $str);
+  return preg_replace_callback('{(\d+)}', '_voipkookoo_numbers_callback', $str);
 }
 
-function _voipkookoo_numbers_add_space($matches) {
-  $string_array = str_split($matches[0]);
-  $number_with_space = implode(" ", $string_array);
-  return $number_with_space;
+function _voipkookoo_numbers_callback($matches) {
+  $server = VoipServer::getServer('kookoo');
+  $server_config = $server->getConfig();
+  $say_as_voice = $server_config['voipcall_sayas_voice_id'];
+  //@todo: language is hardcoded. Fix when Kookoo introduces more languages
+  $ret = '</playtext><say-as format="1" lang="'.$say_as_voice.'">'.$matches[0].'</say-as><playtext lang="EN">';
+  return $ret;
+}
+
+function _voipkookoo_parse_digits($str) {
+  //preg_match_all("{(\d+)}", $str, $result, PREG_PATTERN_ORDER);
+  //return $result;
+  return preg_replace_callback('{(\d+)}', '_voipkookoo_digits_add_space', $str);
+}
+
+function _voipkookoo_digits_add_space($matches) {
+  $server = VoipServer::getServer('kookoo');
+  $server_config = $server->getConfig();
+  $voipcall_sayas_enabled = $server_config['voipcall_sayas_enabled'];
+  $say_as_voice = $server_config['voipcall_sayas_voice_id'];
+
+
+  if ($voipcall_sayas_enabled) {
+    //@todo: language is hardcoded. Fix when Kookoo introduces more languages
+    $ret = '</playtext><say-as format="501" lang="'.$say_as_voice.'">'.$matches[0].'</say-as><playtext lang="EN">';
+  }
+  else {
+    $string_array = str_split($matches[0]);
+    $number_with_space = implode(" ", $string_array);
+    $ret = $number_with_space;
+  }
+  return $ret;
 }
 
 /*Save the audio file from KooKoo to local server*/
