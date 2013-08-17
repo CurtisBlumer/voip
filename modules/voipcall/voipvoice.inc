@@ -220,12 +220,14 @@ function v($text, $args = array(), $as = NULL,  $voice_id=NULL) {
 }
 
 /*
-* Helper function to retrieve VoipVoice instances as list array.
+* Helper function to retrieve VoipVoice instances as list array sorted by description.
 */
 function voipcall_get_voices_as_list($voices) {
+  $list = array();
   foreach($voices as $voice) {
     $list[$voice->getVoiceId()] = $voice->getDescription();
   }
+  asort($list);
   return $list;
 }
 
