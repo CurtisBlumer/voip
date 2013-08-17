@@ -62,7 +62,8 @@ function _voipkookoo_call_handler($kookoo_action = NULL, $cid = NULL) {
     $network = 'sms';
     $from = $_REQUEST['cid'];
     //there is no to field in Kookoo, but we might have it if from SMS framework
-    $to = isset($_REQUEST['To']) ? $_REQUEST['To'] : variable_get('voipcall_cid_number', NULL);
+    //otherwise use KOOKOO SMS NUMBER
+    $to = isset($_REQUEST['To']) ? $_REQUEST['To'] : KOOKOO_SMS_NUMBER;
   }
   else {
     $channel = 'voice';
