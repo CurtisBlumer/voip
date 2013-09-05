@@ -376,5 +376,34 @@ class VoipPlivoFrameworkServer extends VoipServer {
     );
     return $voices;
   }
-}
 
+  /**
+   * Plivo Framework version of VoipServer::audioFileMover()
+   *
+   * Intended for use when a message has been recorded on the server, and needs
+   * to be stored or otherwise processed locally.
+   *
+   * @param string $cid
+   *   The cid of $call
+   */
+  static function audioFileMover($audio_url, $callback_function, &$call, $args = array()) {
+    $dest = file_default_scheme() . '://' ;
+    $filename = basename($audio_url);
+    $file_destination = file_destination($dest . $filename, FILE_EXISTS_RENAME);
+    //File is not immediately available in plivo for download
+    $i = 0;
+    $data = file_get_contents($audio_url);
+    while($data === FALSE && $i<=100) {
+      $data = file_get_contents($audio_url);
+      sleep(1);
+      $i++;
+    }
+    $file = file_save_data($data, $file_destination);
+    $script = $call->getScript();
+    $script->setVar('recording_public_url', file_create_url($file->uri));
+    $call->setScript($script);
+    // update the voipcall with the new values
+    $call = $call->save();
+    $callback_function($file, file_create_url($file->uri), $args);
+  }
+}

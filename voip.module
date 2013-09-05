@@ -260,18 +260,17 @@ function voip_cron_queue_info() {
 function _voip_audiofilemover_callback($item) {
   $filename = basename($item['audio_url']);
   $file_destination = file_destination(file_default_scheme() . '://' . $filename, FILE_EXISTS_RENAME);
-
-  if ($data = file_get_contents($item['audio_url'])) {
+  if ($data = @file_get_contents($item['audio_url'])) {
     $file = file_save_data($data, $file_destination);
     $item['callback_function'](&$file, $item['audio_url'], $item['args']);
   }
-  elseif (! isset($items['retries']) || $item['retries'] < 2) {
+  elseif (! isset($item['retries']) || $item['retries'] < 2) {
     // Allow try again, if file is not available for network/server reasons.
     $item['retries']++;
     $queue = DrupalQueue::get('voipdrupal_audiofilemover');
     $queue->createQueue();
     $queue->createItem($item);
-  }   
+  }
 }
 
 /**

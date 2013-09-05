@@ -283,28 +283,23 @@ function _voipkookoo_call_handler($kookoo_action = NULL, $cid = NULL) {
         }
         else {
           $kookoo_record_url = $_REQUEST['data'];
-//@todo: Disabled saving the recording as it takes >30sec to download which will cause timeout
-/*****
-          //Transfer the file to local server
-          $file = _voipkookoo_transfer_file($kookoo_record_url);
-          $script->setVar('recording_path', file_create_url($file->uri));
-          //Kookoo recordings are hosted only for one day, so we don't use their public url
-          $script->setVar('recording_public_url', file_create_url($file->uri));
-*****/
-
-// TODO: As a temporary solution, use the KooKoo audio URL. Unfortunately, we'll need a longer term solution and an fid. That might involve setting up a cron job to download the audio file and then associating it with the remote url (or the cid of the call). The rest of the system might have to use that URL to make sure the file has already been downloaded before using it. Are there modules that implement that sort of functionality?
-
-         $script->setVar('recording_path', $kookoo_record_url);
-         $script->setVar('recording_public_url', $kookoo_record_url);
-
+          $script->setVar('recording_public_url', $kookoo_record_url);
           $script->setVar('recording_duration', $_REQUEST['record_duration']);
 
           // NOTE: unlike other providers, KooKoo does not return the digit pressed
           //$script->setVar('recording_digits', $_REQUEST['Digits']);
 
-//TODO: how to get an fid for the recording? Shall we temporarily store the remote URL, use cron to move the file to the local server, and then update the file information?
-          $script->setVar('recording_fid', $file->fid);
-
+          $callback_function = $script->getVar('voipscript_record_callback');
+          if($callback_function) {
+            $args = array(
+              'call' => $call,
+              'duration' => $_REQUEST['record_duration'],
+            );
+            VoipKooKooServer::audioFileMover($kookoo_record_url, $callback_function, $args);
+          }
+          else {
+            watchdog('voiptwilio', 'addSetRecord used without voipscript_record_callback function.', array(), WATCHDOG_ERROR);
+          }
           // check the hangup event for the cases where the call ends in the middle of the recording
         }
         $call->setScript($script);
@@ -1265,7 +1260,7 @@ function _voipkookoo_digits_add_space($matches) {
 }
 
 /*Save the audio file from KooKoo to local server*/
-function _voipkookoo_transfer_file($url) {
+/*function _voipkookoo_transfer_file($url) {
 watchdog('debug', "url to download: $url");
   $dest = file_default_scheme() . '://' ;
   $filename = basename($url);
@@ -1282,7 +1277,7 @@ watchdog('debug', "url to download: $url");
   $file = file_save_data($data, $file_destination);
 watchdog('debug', "File: " . print_r($file, TRUE));
   return $file;
-}
+}*/
 
 //Get safe voice Tropo
 function _voipkookoo_get_kookoo_voice_id($voice_id) {

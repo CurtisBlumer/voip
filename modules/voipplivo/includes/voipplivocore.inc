@@ -282,18 +282,28 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
         $script = $call->getScript();
         if($server == 'plivoframework') {
           $plivo_record_url = $_REQUEST['RecordFile'];
-          //only local path supported in Plivo Framework however we need to transfer in Drupal files dir
-          $file = _voipplivocore_transfer_file($plivo_record_url);
-          $file_url = file_create_url($file->uri);
-          $script->setVar('recording_path', $file_url);
-          //We set this to same as recording_path because public url is not available in Plivo
-          $script->setVar('recording_public_url', $file_url);
           $duration = $_REQUEST['RecordingDuration'];
           $digits = $_REQUEST['Digits'];
+          //only local path supported in Plivo Framework however we need to transfer in Drupal files dir
+
+          //We set this to same as recording_path because public url is not available in Plivo
+          $callback_function = $script->getVar('voipscript_record_callback');
+          if($callback_function) {
+            $args = array(
+              'call' => $call,
+              'duration' => $duration,
+            );
+            VoipPlivoFrameworkServer::audioFileMover($plivo_record_url, $call, $callback_function, $args);
+          }
+          else {
+            watchdog('voiptwilio', 'addSetRecord used without voipscript_record_callback function.', array(), WATCHDOG_ERROR);
+          }
+          $script->setVar('recording_public_url', $file_url);
+
         }
         else {
           //Plivo Cloud
-          if ($_REQUEST['RecordingDuration'] == -1){
+          if ($_REQUEST['RecordingDuration'] == -1) {
             //we must set hangup before _voipplivocore_transfer_file() as that
             //function takes long time, therfore resulting in process_hangup
             //command from Plivo to be executed before this call is set to hangup
@@ -302,37 +312,31 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
             $call->save();
           }
           $plivo_record_url = $_REQUEST['RecordUrl'];
-          //Transfer the file to local server
-          $file = _voipplivocore_transfer_file($plivo_record_url);
-          $file_url = file_create_url($file->uri);
-          $script->setVar('recording_path', $file_url);
+          $callback_function = $script->getVar('voipscript_record_callback');
+          if($callback_function) {
+            $args = array(
+              'call' => $call,
+              'duration' => $duration,
+            );
+            VoipPlivoCloudServer::audioFileMover($plivo_record_url, $callback_function, $args);
+          }
+          else {
+            watchdog('voiptwilio', 'addSetRecord used without voipscript_record_callback function.', array(), WATCHDOG_ERROR);
+          }
           $script->setVar('recording_public_url', $plivo_record_url);
 
           if ($_REQUEST['RecordingDuration'] > 0) {
             $duration = $_REQUEST['RecordingDuration'];
             $digits = $_REQUEST['Digits'];
           }
-          else if ($_REQUEST['RecordingDuration'] == -1) {
-            //-1 is undocumented feature, learned about after talking with Plivo support (18.2.2013)
-            //@RecordingDuration = -1 in case of hangup
-            $digits = 'hangup';
-            $filepath = drupal_realpath($file->uri);
-            if (preg_match('/\.(mp3)$/i', $file->filename)) {
-              //Mp3 file
-              $mp3 = new mp3file($filepath);
-              $metadata = $mp3->get_metadata();
-              $duration = isset($metadata['Length']) ? $metadata['Length'] : 0;
-            }
-            else {
-              //Wav file
-              $duration = voipcall_get_wav_duration($filepath);
-            }
+          else {
+            //Could be calculated in voipscript_record_callback
+            $duration = -1;
           }
         }
         //Common variables
         $script->setVar('recording_duration', $duration);
         $script->setVar('recording_digits', $digits);
-        $script->setVar('recording_fid', $file->fid);
         $call->setScript($script);
 
         break;
@@ -1285,7 +1289,7 @@ function _voipplivocore_numbers_add_space($matches) {
   $number_with_space = implode(" ", $string_array);
   return $number_with_space;
 }
-
+/*
 function _voipplivocore_transfer_file($url) {
   $dest = file_default_scheme() . '://' ;
   $filename = basename($url);
@@ -1300,7 +1304,7 @@ function _voipplivocore_transfer_file($url) {
   }
   $file = file_save_data($data, $file_destination);
   return $file;
-}
+}*/
 
 function _voipplivocore_get_plivo_voice($voice_id, $server) {
   $default_server = VoipServer::getServer($server);

@@ -284,13 +284,21 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
         $suffix = ($twilio_action == 'process_record') ? '.wav' : '.mp3';
         $script = $call->getScript();
         $twilio_record_url = $_REQUEST['RecordingUrl'] . $suffix;
-        //Transfer the file to local server
-        $file = _voiptwilio_transfer_file($twilio_record_url);
-        $script->setVar('recording_path', file_create_url($file->uri));
+        $callback_function = $script->getVar('voipscript_record_callback');
+        if($callback_function) {
+          $args = array(
+            'call' => $call,
+            'duration' => $_REQUEST['RecordingDuration'],
+          );
+          $server->audioFileMover($twilio_record_url, $callback_function, $args);
+        }
+        else {
+          watchdog('voiptwilio', 'addSetRecord used without voipscript_record_callback function.', array(), WATCHDOG_ERROR);
+        }
         $script->setVar('recording_public_url', $twilio_record_url);
         $script->setVar('recording_duration', $_REQUEST['RecordingDuration']);
         $script->setVar('recording_digits', $_REQUEST['Digits']);
-        $script->setVar('recording_fid', $file->fid);
+        //$script->setVar('recording_fid', $file->fid);
         $call->setScript($script);
         // check if the call hang up in the middle of the recording
         if($_REQUEST['Digits'] == 'hangup'){
@@ -356,7 +364,6 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
   if (voip_debug()) {
     watchdog('voiptwilio', 'Logged user %uid in.', array('%uid' => $user->uid));
   }
-
 
   if ($twilio_action == 'process_inbound_text') {
     $script = $call->getScript();
@@ -1223,7 +1230,7 @@ function _voiptwilio_numbers_add_space($matches) {
 }
 
 /*Save the audio file from Twilio to local server*/
-function _voiptwilio_transfer_file($url) {
+/*function _voiptwilio_transfer_file($url) {
   $dest = file_default_scheme() . '://' ;
   $filename = basename($url);
   $file_destination = file_destination($dest . $filename, FILE_EXISTS_RENAME);
@@ -1231,3 +1238,4 @@ function _voiptwilio_transfer_file($url) {
   $file = file_save_data($data, $file_destination);
   return $file;
 }
+*/

@@ -363,6 +363,9 @@ function _voipscriptsamples_get_record_script() {
   $end_key = '#';
   $max_length = 20;
   $format = 'mp3';
+  //Set recording callback to save the file locally
+  $script->addSet('voipscript_record_callback', '_voipscriptsamples_record_save_file');
+
   $script->addRecord($prompt, $timeout, $end_key, $max_length, $format);
 
   $script->addLog('Back from recording (%voipscript_hangup_callback)');
@@ -519,4 +522,22 @@ function _voipscriptsamples_record_on_hang_up($original_call) {
   $result = _voipscriptsamples_record_callback($cid, $recording_public_url, $recording_duration);
   $args = array('@result' => $result);
   watchdog('voipscriptsamples', 'The callback returned: @result', $args, WATCHDOG_INFO);
+}
+
+/**
+ * Function executed on hang up as part of voipscript_record script
+ */
+function _voipscriptsamples_record_save_file($file, $audio_url, $args=NULL) {
+  if(isset($args['duration']) && $args['duration'] == -1) {
+    //In case of hangup we get duration -1, so lets calculate it from file object
+    $duration = voipcall_get_audio_duration($file);
+    watchdog('voipscriptsamples', 'Calculated duration '. $duration);
+    $original_call = $args['call'];
+    $original_script = $original_call->getScript();
+    $original_script->setVar('recording_duration', $duration);
+    $original_call->setScript($original_script);
+    // update the voipcall with the new values
+    $original_call->save();
+  }
+  watchdog('voipscriptsamples', 'Record callback file '. print_r($file,true).' audio url '.$audio_url);
 }

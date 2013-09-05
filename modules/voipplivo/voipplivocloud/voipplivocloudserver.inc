@@ -607,4 +607,3 @@ class VoipPlivoCloudServer extends VoipServer {
     return VoipCall::NormalizeNumber($number);
   }
 }
-

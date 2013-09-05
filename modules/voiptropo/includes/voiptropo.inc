@@ -43,17 +43,18 @@ function _voiptropo_call_handler($tropo_action = '', $cid = NULL, $event_type = 
   // process the special case of save_record, which does not have a json
   // object associated with it
   if ($tropo_action == 'save_record') {
-    $file = _voiptropo_file_save_upload();
-    if ($file) {
       $call = VoipCall::load($cid);
       $script = $call->getScript();
-      $script->setVar('recording_path', file_create_url($file->uri));
-      $script->setVar('recording_public_url', file_create_url($file->uri));
       $script->setVar('recording_digits', NULL);
-      $script->setVar('recording_fid', $file->fid);
       $call->setScript($script);
       // update the voipcall with the new values
       $call = $call->save();
+    $callback_function = $script->getVar('voipscript_record_callback');
+    if($callback_function) {
+      VoipTropoServer::audioFileMover($callback_function, $call);
+    }
+    else {
+      watchdog('voiptwilio', 'addSetRecord used without voipscript_record_callback function.', array(), WATCHDOG_ERROR);
     }
     return;
   }
@@ -62,7 +63,6 @@ function _voiptropo_call_handler($tropo_action = '', $cid = NULL, $event_type = 
   try {
     // attempt to handle new outbound and inbound voice/text calls
     $session = new Session();
-
 
     $tropo_action = empty($tropo_action) ? $session->getParameters('tropo_action') : $tropo_action;
     if (empty($tropo_action)) {
@@ -1382,17 +1382,7 @@ function _voiptropo_handle_ongoing_calls($result, $tropo_action, $cid, $event_ty
           $rec_fid = $script->getVar('recording_fid');
           $file = file_load($rec_fid);
           if ($file) {
-            $filepath = drupal_realpath($file->uri);
-            if (preg_match('/\.(mp3)$/i', $file->filename)) {
-              //Mp3 file
-              $mp3 = new mp3file($filepath);
-              $metadata = $mp3->get_metadata();
-              $duration = isset($metadata['Length']) ? $metadata['Length'] : 0;
-            }
-            else {
-              //Wav file
-              $duration = voipcall_get_wav_duration($filepath);
-            }
+            $duration = voipcall_get_audio_duration($file);
             $script->setVar('recording_duration', $duration);
           }
         }
