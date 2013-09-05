@@ -265,17 +265,16 @@ abstract class VoipServer {
    *   'recording_duration' and any other known paramaters.
    */
   static function audioFileMover($audio_url, $callback_function, $args = array()) {
-    //$queue = DrupalQueue::get('voipdrupal_audiofilemover');
-    //$queue->createQueue();
-
     $item = array(
       'audio_url' => $audio_url,
       'callback_function' => $callback_function,
       'args' => $args,
     );
 
-    _voip_audiofilemover_callback($item);
-
-    //$queue->createItem($item);
+    if (!_voip_audiofilemover_callback($item)) {
+      $queue = DrupalQueue::get('voipdrupal_audiofilemover');
+      $queue->createQueue();
+      $queue->createItem($item);
+    }
   }
 }
