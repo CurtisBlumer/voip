@@ -46,16 +46,21 @@ function _voiptropo_call_handler($tropo_action = '', $cid = NULL, $event_type = 
       $call = VoipCall::load($cid);
       $script = $call->getScript();
       $script->setVar('recording_digits', NULL);
-      $call->setScript($script);
-      // update the voipcall with the new values
-      $call = $call->save();
-    $callback_function = $script->getVar('voipscript_record_callback');
+
+    //@todo: move file
+    $file = _voiptropo_file_save_upload();
+    $script->setVar('recording_public_url', file_create_url($file->uri));
+    $script->setVar('recording_fid', $file->fid);
+    $call->setScript($script);
+    // update the voipcall with the new values
+    $call = $call->save();
+    /*$callback_function = $script->getVar('voipscript_record_callback');
     if($callback_function) {
       VoipTropoServer::audioFileMover($callback_function, $call);
     }
     else {
       watchdog('voiptwilio', 'addSetRecord used without voipscript_record_callback function.', array(), WATCHDOG_ERROR);
-    }
+    }*/
     return;
   }
 

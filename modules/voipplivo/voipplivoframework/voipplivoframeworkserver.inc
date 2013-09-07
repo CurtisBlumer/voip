@@ -387,23 +387,10 @@ class VoipPlivoFrameworkServer extends VoipServer {
    *   The cid of $call
    */
   static function audioFileMover($audio_url, $callback_function, &$call, $args = array()) {
-    $dest = file_default_scheme() . '://' ;
-    $filename = basename($audio_url);
-    $file_destination = file_destination($dest . $filename, FILE_EXISTS_RENAME);
-    //File is not immediately available in plivo for download
-    $i = 0;
-    $data = file_get_contents($audio_url);
-    while($data === FALSE && $i<=100) {
-      $data = file_get_contents($audio_url);
-      sleep(1);
-      $i++;
-    }
-    $file = file_save_data($data, $file_destination);
-    $script = $call->getScript();
-    $script->setVar('recording_public_url', file_create_url($file->uri));
-    $call->setScript($script);
-    // update the voipcall with the new values
-    $call = $call->save();
+    $original_call = $args['call'];
+    $original_script = $original_call->getScript();
+    $recording_fid = $original_script->getVar('recording_fid');
+    $file = file_load($recording_fid);
     $callback_function($file, file_create_url($file->uri), $args);
   }
 }

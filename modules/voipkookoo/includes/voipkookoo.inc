@@ -289,7 +289,7 @@ function _voipkookoo_call_handler($kookoo_action = NULL, $cid = NULL) {
           // NOTE: unlike other providers, KooKoo does not return the digit pressed
           //$script->setVar('recording_digits', $_REQUEST['Digits']);
 
-          $callback_function = $script->getVar('voipscript_record_callback');
+          /*$callback_function = $script->getVar('voipscript_record_callback');
           if($callback_function) {
             $args = array(
               'call' => $call,
@@ -299,7 +299,7 @@ function _voipkookoo_call_handler($kookoo_action = NULL, $cid = NULL) {
           }
           else {
             watchdog('voiptwilio', 'addSetRecord used without voipscript_record_callback function.', array(), WATCHDOG_ERROR);
-          }
+          }*/
           // check the hangup event for the cases where the call ends in the middle of the recording
         }
         $call->setScript($script);

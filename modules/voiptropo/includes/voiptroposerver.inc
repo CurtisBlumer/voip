@@ -624,16 +624,10 @@ class VoipTropoServer extends VoipServer {
    *   The cid of $call
    */
   static function audioFileMover($callback_function, &$call, $args = array()) {
-    $file = _voiptropo_file_save_upload();
-    $script = $call->getScript();
-    $script->setVar('recording_public_url', file_create_url($file->uri));
-    $script->setVar('recording_fid', $file->fid);
-    $call->setScript($script);
-    // update the voipcall with the new values
-    $call = $call->save();
-    $args = array(
-      'call' => $call,
-    );
+    $original_call = $args['call'];
+    $original_script = $original_call->getScript();
+    $recording_fid = $original_script->getVar('recording_fid');
+    $file = file_load($recording_fid);
     $callback_function($file, file_create_url($file->uri), $args);
   }
 }

@@ -287,7 +287,10 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
           //only local path supported in Plivo Framework however we need to transfer in Drupal files dir
 
           //We set this to same as recording_path because public url is not available in Plivo
-          $callback_function = $script->getVar('voipscript_record_callback');
+          $file = _voipplivocore_file_save_upload($plivo_record_url);
+          $script->setVar('recording_public_url', file_create_url($file->uri));
+          $script->setVar('recording_fid', $file->fid);
+          /*$callback_function = $script->getVar('voipscript_record_callback');
           if($callback_function) {
             $args = array(
               'call' => $call,
@@ -297,7 +300,7 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
           }
           else {
             watchdog('voiptwilio', 'addSetRecord used without voipscript_record_callback function.', array(), WATCHDOG_ERROR);
-          }
+          }*/
           $script->setVar('recording_public_url', $file_url);
 
         }
@@ -312,7 +315,7 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
             $call->save();
           }
           $plivo_record_url = $_REQUEST['RecordUrl'];
-          $callback_function = $script->getVar('voipscript_record_callback');
+          /*$callback_function = $script->getVar('voipscript_record_callback');
           if($callback_function) {
             $args = array(
               'call' => $call,
@@ -322,7 +325,7 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
           }
           else {
             watchdog('voiptwilio', 'addSetRecord used without voipscript_record_callback function.', array(), WATCHDOG_ERROR);
-          }
+          }*/
           $script->setVar('recording_public_url', $plivo_record_url);
 
           if ($_REQUEST['RecordingDuration'] > 0) {
@@ -1321,4 +1324,20 @@ function _voipplivocore_get_plivo_voice($voice_id, $server) {
     }
   }
   return $voice_id;
+}
+
+function _voipplivocore_file_save_upload($audio_url){
+  $dest = file_default_scheme() . '://' ;
+  $filename = basename($audio_url);
+  $file_destination = file_destination($dest . $filename, FILE_EXISTS_RENAME);
+  //File is not immediately available in plivo for download
+  $i = 0;
+  $data = file_get_contents($audio_url);
+  while($data === FALSE && $i<=100) {
+    $data = file_get_contents($audio_url);
+    sleep(1);
+    $i++;
+  }
+  $file = file_save_data($data, $file_destination);
+  return $file;
 }
