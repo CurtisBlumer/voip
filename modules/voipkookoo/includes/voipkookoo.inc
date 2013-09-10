@@ -298,7 +298,6 @@ function _voipkookoo_call_handler($kookoo_action = NULL, $cid = NULL) {
             VoipKooKooServer::audioFileMover($kookoo_record_url, $callback_function, $args);
           }
           else {
-            watchdog('voiptwilio', 'addSetRecord used without voipscript_record_callback function.', array(), WATCHDOG_ERROR);
           }*/
           // check the hangup event for the cases where the call ends in the middle of the recording
         }

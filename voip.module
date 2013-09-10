@@ -246,19 +246,15 @@ function voip_theme() {
 function voip_cron() {
   $queue = DrupalQueue::get('voipdrupal_audiofilemover');
   $end = time() + 15;
-  watchdog('debug', 'voip_cron');
   while (time() < $end && ($item = $queue->claimItem())) {
-    watchdog('debug', 'voip_cron item '.print_r($item, true));
     if (_voip_audiofilemover_callback($item->data)) {
       $queue->deleteItem($item);
     }
     else {
       $item->data['retries']++;
-      watchdog('debug', 'retries '.$item->data['retries']);
       if ($item->data['retries'] > 2) {
         // Still delete item, been tried again and it is still not working.
         $queue->deleteItem($item);
-        watchdog('debug', 'delete item ');
       }
       else {
         // Store retry count.
@@ -268,9 +264,6 @@ function voip_cron() {
         ))
         ->condition('item_id', $item->item_id)
         ->execute();
-
-        $queue->releaseItem($item);
-        //$queue->createItem($item->data);
       }
     }
   }
@@ -289,14 +282,12 @@ function voip_cron() {
 function _voip_audiofilemover_callback($item) {
   $filename = basename($item['audio_url']);
   $file_destination = file_destination(file_default_scheme() . '://' . $filename, FILE_EXISTS_RENAME);
-  watchdog('debug', 'dl from '.$item['audio_url']);
   if ($data = @file_get_contents($item['audio_url'])) {
     $file = file_save_data($data, $file_destination);
     $item['callback_function']($file, $item['audio_url'], $item['args']);
     return TRUE;
   }
   else {
-    watchdog('debug', 'failed dl');
     return FALSE;
   }
 }

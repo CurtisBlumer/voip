@@ -541,12 +541,9 @@ function _voipscriptsamples_record_save_file($recording_public_url, $source, $ci
 }
 
 function _voipscriptsamples_record_calculate_duration($file, $audio_url, $args=NULL) {
-  watchdog('voipscriptsamples', 'In _voipscriptsamples_record_calculate_duration file'. print_r($file,true));
-  watchdog('voipscriptsamples', 'In _voipscriptsamples_record_calculate_duration audio_url'. $audio_url);
   if(isset($args['duration']) && $args['duration'] == -1) {
     //In case of hangup we get duration -1, so lets calculate it from file object
     $duration = voipcall_get_audio_duration($file);
-    watchdog('voipscriptsamples', 'Calculated recording duration '. $duration);
     $original_call = $args['call'];
     $original_script = $original_call->getScript();
     $original_script->setVar('recording_duration', $duration);

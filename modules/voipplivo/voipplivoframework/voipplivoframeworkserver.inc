@@ -386,7 +386,7 @@ class VoipPlivoFrameworkServer extends VoipServer {
    * @param string $cid
    *   The cid of $call
    */
-  static function audioFileMover($audio_url, $callback_function, &$call, $args = array()) {
+  static function audioFileMover($audio_url, $callback_function, $args = array()) {
     $original_call = $args['call'];
     $original_script = $original_call->getScript();
     $recording_fid = $original_script->getVar('recording_fid');
