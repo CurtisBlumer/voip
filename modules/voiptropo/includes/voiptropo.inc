@@ -54,13 +54,6 @@ function _voiptropo_call_handler($tropo_action = '', $cid = NULL, $event_type = 
     $call->setScript($script);
     // update the voipcall with the new values
     $call = $call->save();
-    /*$callback_function = $script->getVar('voipscript_record_callback');
-    if($callback_function) {
-      VoipTropoServer::audioFileMover($callback_function, $call);
-    }
-    else {
-      watchdog('voiptwilio', 'addSetRecord used without voipscript_record_callback function.', array(), WATCHDOG_ERROR);
-    }*/
     return;
   }
 

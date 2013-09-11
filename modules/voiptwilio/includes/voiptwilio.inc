@@ -284,17 +284,6 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
         $suffix = ($twilio_action == 'process_record') ? '.wav' : '.mp3';
         $script = $call->getScript();
         $twilio_record_url = $_REQUEST['RecordingUrl'] . $suffix;
-        /*$callback_function = $script->getVar('voipscript_record_callback');
-        if($callback_function) {
-          $args = array(
-            'call' => $call,
-            'duration' => $_REQUEST['RecordingDuration'],
-          );
-          $server->audioFileMover($twilio_record_url, $callback_function, $args);
-        }
-        else {
-          watchdog('voiptwilio', 'addSetRecord used without voipscript_record_callback function.', array(), WATCHDOG_ERROR);
-        }*/
         $script->setVar('recording_public_url', $twilio_record_url);
         $script->setVar('recording_duration', $_REQUEST['RecordingDuration']);
         $script->setVar('recording_digits', $_REQUEST['Digits']);

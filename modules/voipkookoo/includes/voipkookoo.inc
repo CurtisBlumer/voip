@@ -271,7 +271,6 @@ function _voipkookoo_call_handler($kookoo_action = NULL, $cid = NULL) {
         $call->setScript($script);
         break;
       case 'process_record':
-        watchdog('record', 'vars '.print_r($_REQUEST,true));
         $script = $call->getScript();
         if($_REQUEST['status'] == 'silence') {
           //empty recording
@@ -288,18 +287,6 @@ function _voipkookoo_call_handler($kookoo_action = NULL, $cid = NULL) {
 
           // NOTE: unlike other providers, KooKoo does not return the digit pressed
           //$script->setVar('recording_digits', $_REQUEST['Digits']);
-
-          /*$callback_function = $script->getVar('voipscript_record_callback');
-          if($callback_function) {
-            $args = array(
-              'call' => $call,
-              'duration' => $_REQUEST['record_duration'],
-            );
-            VoipKooKooServer::audioFileMover($kookoo_record_url, $callback_function, $args);
-          }
-          else {
-          }*/
-          // check the hangup event for the cases where the call ends in the middle of the recording
         }
         $call->setScript($script);
         break;
@@ -324,7 +311,6 @@ function _voipkookoo_call_handler($kookoo_action = NULL, $cid = NULL) {
     //In case of hangup during recording Kookoo will send recording
     //information in this event
     if($_REQUEST['process'] == 'record') {
-      watchdog('record', 'record in hangup '.print_r($_REQUEST,true));
       $script = $call->getScript();
       //@todo: disabled saving the prompts as it takes >30sec to download which will cause timeout
       $kookoo_record_url = $_REQUEST['data'];
@@ -958,7 +944,6 @@ function _voipkookoo_send_response($response) {
   $output .= '</response>';
 
   drupal_add_http_header('Content-Type', 'text/xml; charset=utf-8');
-  watchdog('debug', htmlspecialchars($output));
   print $output;
 
   return TRUE;
@@ -1257,26 +1242,6 @@ function _voipkookoo_digits_add_space($matches) {
   }
   return $ret;
 }
-
-/*Save the audio file from KooKoo to local server*/
-/*function _voipkookoo_transfer_file($url) {
-watchdog('debug', "url to download: $url");
-  $dest = file_default_scheme() . '://' ;
-  $filename = basename($url);
-  $file_destination = file_destination($dest . $filename, FILE_EXISTS_RENAME);
-  //File is not immediately available in Kookoo for download
-  $i = 0;
-  $data = FALSE;
-  while($data === FALSE && $i<=100) {
-    sleep(1);
-    $data = file_get_contents($url);
-    $i++;
-  }
-  watchdog('debug', "File downloaed after $i attempts");
-  $file = file_save_data($data, $file_destination);
-watchdog('debug', "File: " . print_r($file, TRUE));
-  return $file;
-}*/
 
 //Get safe voice Tropo
 function _voipkookoo_get_kookoo_voice_id($voice_id) {

@@ -290,19 +290,7 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
           $file = _voipplivocore_file_save_upload($plivo_record_url);
           $script->setVar('recording_public_url', file_create_url($file->uri));
           $script->setVar('recording_fid', $file->fid);
-          /*$callback_function = $script->getVar('voipscript_record_callback');
-          if($callback_function) {
-            $args = array(
-              'call' => $call,
-              'duration' => $duration,
-            );
-            VoipPlivoFrameworkServer::audioFileMover($plivo_record_url, $call, $callback_function, $args);
-          }
-          else {
-            watchdog('voiptwilio', 'addSetRecord used without voipscript_record_callback function.', array(), WATCHDOG_ERROR);
-          }*/
           $script->setVar('recording_public_url', $file_url);
-
         }
         else {
           //Plivo Cloud
@@ -310,22 +298,17 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
             //we must set hangup before _voipplivocore_transfer_file() as that
             //function takes long time, therfore resulting in process_hangup
             //command from Plivo to be executed before this call is set to hangup
-            $call->SetCallStatus(VoipCall::COMPLETED);
+            /*$call->SetCallStatus(VoipCall::COMPLETED);
             $call->setHangupReason(VoipCall::HANGUP_BY_USER);
-            $call->save();
+            $call->save();*/
+            voipplivocore_update_call_status($call, 'completed');
+          }
+
+          if($_REQUEST['status'] == 'completed') {
+            voipplivocore_update_call_status($call, 'completed');
           }
           $plivo_record_url = $_REQUEST['RecordUrl'];
-          /*$callback_function = $script->getVar('voipscript_record_callback');
-          if($callback_function) {
-            $args = array(
-              'call' => $call,
-              'duration' => $duration,
-            );
-            VoipPlivoCloudServer::audioFileMover($plivo_record_url, $callback_function, $args);
-          }
-          else {
-            watchdog('voiptwilio', 'addSetRecord used without voipscript_record_callback function.', array(), WATCHDOG_ERROR);
-          }*/
+
           $script->setVar('recording_public_url', $plivo_record_url);
 
           if ($_REQUEST['RecordingDuration'] > 0) {
