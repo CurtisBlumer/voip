@@ -339,6 +339,7 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
        case 'process_sms_callback':
          $call = _voipplivocore_process_sms_response($call, $_REQUEST);
          if(strtolower($call->getCallChannel()) == 'text') {
+           $call->setEndTime();
            // update sms status
            $call->save();
            // since 'process_sms_callback' is asynchronous, go back

@@ -307,6 +307,7 @@ function _voiptwilio_call_handler($twilio_action, $cid = NULL) {
       case 'process_send_sms':
       case 'process_sms_callback':
         $call = _voiptwilio_process_sms_response($call, $_REQUEST);
+        $call->setEndTime();
         if (strtolower($call->getCallChannel()) == 'text') {
           // update sms status
           $call->save();
