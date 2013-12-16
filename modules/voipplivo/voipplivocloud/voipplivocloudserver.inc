@@ -247,6 +247,7 @@ class VoipPlivoCloudServer extends VoipServer {
             $error_msg = $response['response']['error'];
             $voipcall->setErrorMessage($error_msg);
             $voipcall->setCallStatus(VoipCall::ERROR);
+            $voipcall->setTextStatus(VoipCall::TEXT_FAILED);
             $voipcall->save();
             $rc = FALSE;
             break;
