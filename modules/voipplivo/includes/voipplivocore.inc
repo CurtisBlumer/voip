@@ -42,7 +42,7 @@ function voipplivocore_call_handler($server, $plivo_action, $cid = NULL) {
   // validate $_REQUEST to avoid hack attempts
   if(!call_user_func('_voip'.$server.'_validate_request')) {
     $msg = '_voip_plivocore_call_handler called with invalid AccountSid: @sid';
-    $params = array('@sid' => $incoming_sid);
+    $params = array('@sid' => $_SERVER["HTTP_X_PLIVO_SIGNATURE"]);
     watchdog('voipplivocore', $msg, $params, WATCHDOG_WARNING);
     return FALSE; // TODO: should we return an error response to the server?
   }

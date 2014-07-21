@@ -44,6 +44,7 @@ function _voipplivoframework_validate_request() {
   $server_config = $server->getConfig();
   $account_sid = $server_config['voipplivoframework_account_sid'];
   $auth_token = $server_config['voipplivoframework_auth_token'];
+  watchdog('debug', print_r($_SERVER["HTTP_X_PLIVO_SIGNATURE"],true));
   // Create a new PlivoUtils object
   $utils = new PlivoUtils($account_sid, $auth_token);
 
