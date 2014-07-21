@@ -122,7 +122,7 @@ function voipplivoframework_admin_form_validate($form, &$form_state) {
 
   // Send a test request to validate the configuration of the Plivo server
   $values = $form_state['values'];
-  //$result = VoipPlivoFrameworkServer::ping($values);
+  $result = VoipPlivoFrameworkServer::ping($values);
 
   if (voip_error()) {
     form_set_error('', t('A Plivo-related error occurred: @error', array('@error' => voip_error_message())));
