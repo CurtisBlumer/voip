@@ -983,6 +983,9 @@ function _voipplivocore_send_response($response) {
   $output .= '<Response>';
   $output .= $response;
   $output .= '</Response>';
+  if(voip_debug()) {
+    watchdog('voipplivocore', print_r($output,true));
+  }
   drupal_add_http_header('Content-Type', 'text/xml; charset=utf-8');
   print $output;
   return TRUE;
