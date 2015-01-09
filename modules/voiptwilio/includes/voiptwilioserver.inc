@@ -268,8 +268,6 @@ class VoipTwilioServer extends VoipServer {
     if ($response->IsError) {
       // differentiate between processing errors and higher-level errors
       $twilio_error_code = (string) $response->ResponseXml->RestException->Code;
-
-      watchdog('debug', $twilio_error_code);
       switch ($twilio_error_code) {
         // the following codes are listed in
         //   http://www.twilio.com/docs/errors/reference/
@@ -319,7 +317,6 @@ class VoipTwilioServer extends VoipServer {
     }
     else {
       $rc = TRUE;
-
       // get the new id and status associated with the call
       $xml = $response->ResponseXml;
       $call_id = (string) $xml->Message->Sid;
