@@ -1066,7 +1066,8 @@ function _voiptwilio_process_dial_response($call, $request) {
  */
 function  _voiptwilio_process_sms_response($call, $request) {
   $cid = $call->getCid();
-  $sms_status_tmp = $request['SmsStatus'];
+  //SMSStatus is when sending SMS through Voice channel using <Sms> Twiml, while MessageStatus is for send_text()
+  $sms_status_tmp = isset($request['SmsStatus']) ? $request['SmsStatus'] : $request['MessageStatus'];
   switch ($sms_status_tmp) {
     default:
       $msg = 'Invalid SmsStatus: @status for call cid: @cid';
@@ -1078,6 +1079,7 @@ function  _voiptwilio_process_sms_response($call, $request) {
       return NULL;
       break;
     case 'failed':
+    case 'undelivered':
       $msg = 'SMS sending failed for call cid: @cid. Make sure your Twilio number is sms-enabled.';
       $params = array('@cid' => $cid);
       watchdog('voiptwilio', $msg, $params, WATCHDOG_WARNING);
@@ -1090,10 +1092,12 @@ function  _voiptwilio_process_sms_response($call, $request) {
       $text_status = VoipCall::TEXT_INVALID;
       break;
     case 'sending':
+    case 'queued':
       $text_status = VoipCall::TEXT_SENDING;
       break;
     case 'received': // TODO: this is status is not documented in twilio.com. is this a twilio bug?
     case 'sent':
+    case 'delivered':
       $text_status = VoipCall::TEXT_SENT;
       break;
   }
