@@ -974,10 +974,12 @@ function voiptwilio_update_call_status($call, $twilio_call_status = 'in-progress
         '@cid' => $cid,
       );
       $call->report_error('voiptwilio', $msg, $params);
+      module_invoke_all('voip_event', $call, VoipEvent::INVALID);
       break;
     case 'failed': // call failed, most likely due to invalid number
       $call->setCallStatus(VoipCall::INVALID);
       $call->setHangupReason(VoipCall::HANGUP_INVALID_NUMBER);
+      module_invoke_all('voip_event', $call, VoipEvent::INVALID);
       break;
     case 'queued':
       $call->setCallStatus(VoipCall::QUEUED);
@@ -998,10 +1000,12 @@ function voiptwilio_update_call_status($call, $twilio_call_status = 'in-progress
     case 'busy':
       $call->setCallStatus(VoipCall::BUSY);
       $call->setHangupReason(VoipCall::HANGUP_BUSY);
+      module_invoke_all('voip_event', $call, VoipEvent::BUSY);
       break;
     case 'no-answer':
       $call->setCallStatus(VoipCall::NO_ANSWER);
       $call->setHangupReason(VoipCall::HANGUP_NO_ANSWER);
+      module_invoke_all('voip_event', $call, VoipEvent::NO_ANSWER);
       break;
     case 'canceled':
       $call->setCallStatus(VoipCall::CANCELED);
